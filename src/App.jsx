@@ -4,7 +4,8 @@ import Header from './components/Header';
 import LoginModal from './components/LoginModal';
 import { VesselTable } from './components/VesselTable';
 import { KpiCards } from './components/KpiCards';
-import { ShipBuilder } from './components/ShipBuilder'; // 1. Add import
+import { ShipBuilder } from './components/ShipBuilder'; 
+import { PortsManager } from './components/PortsManager'; // 1. Added PortsManager import
 
 export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -78,10 +79,10 @@ export default function App() {
           handleLogout={handleLogout} 
         />
         <main className="p-8 space-y-6 max-w-[1600px] mx-auto w-full">
-          {/* Components */}
-          {/*<KpiCards />*/}
-          {/* Render ShipBuilder if Vessels tab is active, or render below */}
-          {activeTab === 'Vessels' ? <ShipBuilder /> : <VesselTable />}
+          {/* Active Tab View Switcher */}
+          {activeTab === 'Dashboard' && <VesselTable />}
+          {activeTab === 'Vessels' && <ShipBuilder />}
+          {activeTab === 'Ports Manager' && <PortsManager />}
         </main>
       </div>
 

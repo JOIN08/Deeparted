@@ -14,11 +14,11 @@ import {
 export const NAV_ITEMS = [
   { name: 'Dashboard', icon: LayoutDashboard },
   { name: 'Vessels', icon: Ship },
-  { name: 'Cargo', icon: Package },
-  { name: 'Ports & Hubs', icon: Anchor },
+  /*{ name: 'Cargo', icon: Package },*/
+  { name: 'Ports Manager', icon: Anchor },
   { name: 'Routes', icon: Navigation },
-  { name: 'Weather', icon: CloudSun, badge: true },
-  { name: 'Alerts', icon: Bell },
+  /*{ name: 'Weather', icon: CloudSun, badge: true },*/
+  /*{ name: 'Alerts', icon: Bell },*/
   { name: 'Reports', icon: FileText },
   { name: 'Users', icon: Users },
   { name: 'Settings', icon: Settings },
