@@ -7,6 +7,7 @@ import { KpiCards } from './components/KpiCards';
 import { ShipBuilder } from './components/ShipBuilder'; 
 import { PortsManager } from './components/PortsManager'; // 1. Added PortsManager import
 import { Routes } from './components/Routes';
+import { Reports } from './components/Reports';
 
 export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -85,6 +86,7 @@ export default function App() {
           {activeTab === 'Vessels' && <ShipBuilder />}
           {activeTab === 'Ports Manager' && <PortsManager />}
           {activeTab === 'Routes' && <Routes />}
+          {activeTab === 'Reports' && <Reports />}
         </main>
       </div>
 
