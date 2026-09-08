@@ -5,9 +5,10 @@ import LoginModal from './components/LoginModal';
 import { VesselTable } from './components/VesselTable';
 import { KpiCards } from './components/KpiCards';
 import { ShipBuilder } from './components/ShipBuilder'; 
-import { PortsManager } from './components/PortsManager'; // 1. Added PortsManager import
+import { PortsManager } from './components/PortsManager';
 import { Routes } from './components/Routes';
 import { Reports } from './components/Reports';
+import { Users } from './components/Users';
 
 export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -87,6 +88,7 @@ export default function App() {
           {activeTab === 'Ports Manager' && <PortsManager />}
           {activeTab === 'Routes' && <Routes />}
           {activeTab === 'Reports' && <Reports />}
+          {activeTab === 'Users' && <Users />}
         </main>
       </div>
 
