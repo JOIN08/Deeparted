@@ -1,12 +1,47 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from "react";
 import {
-  FileText, Plus, Printer, Eye, Edit3, Trash2, GripVertical,
-  Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight,
-  List, ListOrdered, Download, Upload, Layers, Sparkles, Search,
-  Copy, Undo2, Redo2, ZoomIn, ZoomOut, Image as ImageIcon, Type,
-  Palette, Table2, Minus, QrCode, ScanLine, PenTool, X, Link2,
-  FileStack, AlertTriangle, BringToFront, SendToBack, Move
-} from 'lucide-react';
+  FileText,
+  Plus,
+  Printer,
+  Eye,
+  Edit3,
+  Trash2,
+  GripVertical,
+  Bold,
+  Italic,
+  Underline,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  List,
+  ListOrdered,
+  Download,
+  Upload,
+  Layers,
+  Sparkles,
+  Search,
+  Copy,
+  Undo2,
+  Redo2,
+  ZoomIn,
+  ZoomOut,
+  Image as ImageIcon,
+  Type,
+  Palette,
+  Table2,
+  Minus,
+  QrCode,
+  ScanLine,
+  PenTool,
+  X,
+  Link2,
+  FileStack,
+  AlertTriangle,
+  BringToFront,
+  SendToBack,
+  Move,
+} from "lucide-react";
+import { PASSENGER_TICKET_REPORT } from "../data/passengerTicketTemplate";
 
 // ---------------------------------------------------------------------------
 // Storage helpers
@@ -17,9 +52,9 @@ import {
 // won't be shared across devices/users.
 // ---------------------------------------------------------------------------
 const STORAGE_KEYS = {
-  reports: 'reportgen.reports.v3',
-  customVariables: 'reportgen.customVariables.v1',
-  assets: 'reportgen.assets.v1',
+  reports: "reportgen.reports.v3",
+  customVariables: "reportgen.customVariables.v1",
+  assets: "reportgen.assets.v1",
 };
 
 function loadFromStorage(key, fallback) {
@@ -44,27 +79,11 @@ function saveToStorage(key, value) {
 const TEXT_LAYER_Z = 50;
 
 const DEFAULT_REPORTS = [
+  PASSENGER_TICKET_REPORT,
   {
-    id: 'rep-1',
-    title: 'Passenger Ticket & Boarding Pass',
-    paperSize: 'A4',
-    floatingElements: [],
-    content: `
-      <h1 style="text-align: center;">BOARDING PASS & RECEIPT</h1>
-      <hr/>
-      <p><strong>Passenger Name:</strong> {{passenger_name}}</p>
-      <p><strong>Accommodation / Bed:</strong> {{bed_number}} ({{accommodation_class}})</p>
-      <p><strong>Vessel:</strong> {{vessel_name}}</p>
-      <p><strong>Route:</strong> {{origin_port}} &rarr; {{destination_port}}</p>
-      <p><strong>Departure Date:</strong> {{departure_date}}</p>
-      <p><strong>Ticket Price:</strong> {{ticket_price}}</p>
-      <p><strong>Status:</strong> {{payment_status}}</p>
-    `
-  },
-  {
-    id: 'rep-2',
-    title: 'Monthly Earning & Revenue Summary',
-    paperSize: 'Letter',
+    id: "rep-2",
+    title: "Monthly Earning & Revenue Summary",
+    paperSize: "Letter",
     floatingElements: [],
     content: `
       <h2>MONTHLY MARITIME REVENUE REPORT</h2>
@@ -88,13 +107,14 @@ const DEFAULT_REPORTS = [
           <td><strong>{{gross_monthly_earnings}}</strong></td>
         </tr>
       </table>
-    `
-  }
+    `,
+  },
 ];
 
 // Placeholder image used out-of-the-box so the Images tab isn't empty on first run.
 const PLACEHOLDER_LOGO_DATA_URL =
-  'data:image/svg+xml;utf8,' + encodeURIComponent(`
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(`
     <svg xmlns="http://www.w3.org/2000/svg" width="160" height="160">
       <rect width="160" height="160" fill="#1d4ed8"/>
       <text x="80" y="90" font-family="Arial, sans-serif" font-size="28" fill="white" text-anchor="middle">LOGO</text>
@@ -108,22 +128,38 @@ const IN_TO_PX = 96;
 
 function getPageSizePx(paperSize, customWidth, customHeight, customUnit) {
   switch (paperSize) {
-    case 'A4':
-      return { width: Math.round(210 * MM_TO_PX), height: Math.round(297 * MM_TO_PX) };
-    case 'Letter':
-      return { width: Math.round(8.5 * IN_TO_PX), height: Math.round(11 * IN_TO_PX) };
-    case 'Legal':
-      return { width: Math.round(8.5 * IN_TO_PX), height: Math.round(14 * IN_TO_PX) };
-    case 'Receipt':
-      return { width: Math.round(80 * MM_TO_PX), height: Math.round(200 * MM_TO_PX) };
-    case 'Custom': {
+    case "A4":
+      return {
+        width: Math.round(210 * MM_TO_PX),
+        height: Math.round(297 * MM_TO_PX),
+      };
+    case "Letter":
+      return {
+        width: Math.round(8.5 * IN_TO_PX),
+        height: Math.round(11 * IN_TO_PX),
+      };
+    case "Legal":
+      return {
+        width: Math.round(8.5 * IN_TO_PX),
+        height: Math.round(14 * IN_TO_PX),
+      };
+    case "Receipt":
+      return {
+        width: Math.round(80 * MM_TO_PX),
+        height: Math.round(200 * MM_TO_PX),
+      };
+    case "Custom": {
       const w = parseFloat(customWidth) || 210;
       const h = parseFloat(customHeight) || 297;
-      const factor = customUnit === 'in' ? IN_TO_PX : customUnit === 'px' ? 1 : MM_TO_PX;
+      const factor =
+        customUnit === "in" ? IN_TO_PX : customUnit === "px" ? 1 : MM_TO_PX;
       return { width: Math.round(w * factor), height: Math.round(h * factor) };
     }
     default:
-      return { width: Math.round(210 * MM_TO_PX), height: Math.round(297 * MM_TO_PX) };
+      return {
+        width: Math.round(210 * MM_TO_PX),
+        height: Math.round(297 * MM_TO_PX),
+      };
   }
 }
 
@@ -136,57 +172,62 @@ function getPageSizePx(paperSize, customWidth, customHeight, customUnit) {
 function generateTableHTML(rows, cols) {
   let html = '<table style="width:100%;height:100%;border-collapse:collapse;">';
   for (let r = 0; r < rows; r++) {
-    html += '<tr>';
+    html += "<tr>";
     for (let c = 0; c < cols; c++) {
-      html += `<td style="border:1px solid #cbd5e1;padding:6px;min-width:24px;">${r === 0 ? `Column ${c + 1}` : '&nbsp;'}</td>`;
+      html += `<td style="border:1px solid #cbd5e1;padding:6px;min-width:24px;">${r === 0 ? `Column ${c + 1}` : "&nbsp;"}</td>`;
     }
-    html += '</tr>';
+    html += "</tr>";
   }
-  html += '</table>';
+  html += "</table>";
   return html;
 }
 
-const renderDivider = ({ color = '#cbd5e1', bold = false }) =>
+const renderDivider = ({ color = "#cbd5e1", bold = false }) =>
   `<hr style="border:none;border-top:${bold ? 3 : 1}px solid ${color};width:100%;height:100%;margin:0;" />`;
 
-const renderPageBreak = ({ color = '#94a3b8', bold = false }) =>
+const renderPageBreak = ({ color = "#94a3b8", bold = false }) =>
   `<div style="width:100%;height:100%;border-top:2px dashed ${color};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:${bold ? 700 : 400};color:${color};">— Page Break —</div>`;
 
-const renderSignature = ({ color = '#000000', bold = false, linkedVar = '{{signatory_name}}', label = 'Authorized Signature' }) =>
+const renderSignature = ({
+  color = "#000000",
+  bold = false,
+  linkedVar = "{{signatory_name}}",
+  label = "Authorized Signature",
+}) =>
   `<div style="width:100%;height:100%;color:${color};font-weight:${bold ? 700 : 400};">
     <div style="border-top:${bold ? 2 : 1}px solid ${color};width:100%;"></div>
     <p style="font-size:11px;margin-top:4px;">${linkedVar}<br/>${label}</p>
   </div>`;
 
-const renderQR = ({ linkedVar = '{{ticket_id}}' }) =>
+const renderQR = ({ linkedVar = "{{ticket_id}}" }) =>
   `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${linkedVar}" style="width:100%;height:100%;object-fit:contain;" alt="QR Code" />`;
 
-const renderBarcode = ({ linkedVar = '{{ticket_id}}' }) =>
+const renderBarcode = ({ linkedVar = "{{ticket_id}}" }) =>
   `<img src="https://barcodeapi.org/api/128/${linkedVar}" style="width:100%;height:100%;object-fit:contain;" alt="Barcode" />`;
 
 function renderFloatingContent(el) {
   switch (el.kind) {
-    case 'variable':
-      return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:${el.color || '#1d4ed8'};font-weight:${el.bold ? 700 : 600};background:${el.bgColor && el.bgColor !== 'transparent' ? el.bgColor : '#eff6ff'};border:1px dashed #93c5fd;border-radius:2px;padding:2px 6px;overflow:hidden;white-space:nowrap;">${el.tag}</div>`;
-    case 'image':
+    case "variable":
+      return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:${el.color || "#1d4ed8"};font-weight:${el.bold ? 700 : 600};background:${el.bgColor && el.bgColor !== "transparent" ? el.bgColor : "#eff6ff"};border:1px dashed #93c5fd;border-radius:2px;padding:2px 6px;overflow:hidden;white-space:nowrap;">${el.tag}</div>`;
+    case "image":
       return el.html;
-    case 'divider':
+    case "divider":
       return renderDivider(el);
-    case 'pagebreak':
+    case "pagebreak":
       return renderPageBreak(el);
-    case 'spacer':
+    case "spacer":
       return '<div style="width:100%;height:100%;"></div>';
-    case 'signature':
+    case "signature":
       return renderSignature(el);
-    case 'qr':
+    case "qr":
       return renderQR(el);
-    case 'barcode':
+    case "barcode":
       return renderBarcode(el);
-    case 'table':
-    case 'text':
-      return el.html || '';
+    case "table":
+    case "text":
+      return el.html || "";
     default:
-      return el.html || '';
+      return el.html || "";
   }
 }
 
@@ -194,69 +235,95 @@ function renderFloatingContent(el) {
 // fields; `size` is its default footprint when dropped on the page.
 const ELEMENT_BLOCKS = [
   {
-    label: 'Text Box',
+    label: "Text Box",
     icon: Type,
-    kind: 'text',
+    kind: "text",
     size: { width: 220, height: 80 },
-    defaultConfig: { html: '<p>New text box</p>', color: '#111827', bgColor: 'transparent', bold: false }
+    defaultConfig: {
+      html: "<p>New text box</p>",
+      color: "#111827",
+      bgColor: "transparent",
+      bold: false,
+    },
   },
   {
-    label: 'Divider',
+    label: "Divider",
     icon: Minus,
-    kind: 'divider',
+    kind: "divider",
     size: { width: 320, height: 20 },
-    defaultConfig: { color: '#cbd5e1', bold: false, bgColor: 'transparent' }
+    defaultConfig: { color: "#cbd5e1", bold: false, bgColor: "transparent" },
   },
   {
-    label: 'Spacer',
+    label: "Spacer",
     icon: FileStack,
-    kind: 'spacer',
+    kind: "spacer",
     size: { width: 320, height: 40 },
-    defaultConfig: {}
+    defaultConfig: {},
   },
   {
-    label: 'Page Break',
+    label: "Page Break",
     icon: FileStack,
-    kind: 'pagebreak',
+    kind: "pagebreak",
     size: { width: 320, height: 44 },
-    defaultConfig: { color: '#94a3b8', bold: false, bgColor: 'transparent' }
+    defaultConfig: { color: "#94a3b8", bold: false, bgColor: "transparent" },
   },
   {
-    label: 'Table',
+    label: "Table",
     icon: Table2,
-    kind: 'table',
+    kind: "table",
     size: { width: 340, height: 140 },
-    defaultConfig: { rows: 3, cols: 3, html: generateTableHTML(3, 3), color: '#0f172a', bgColor: 'transparent', bold: false, gridVersion: 0 }
+    defaultConfig: {
+      rows: 3,
+      cols: 3,
+      html: generateTableHTML(3, 3),
+      color: "#0f172a",
+      bgColor: "transparent",
+      bold: false,
+      gridVersion: 0,
+    },
   },
   {
-    label: 'Signature Line',
+    label: "Signature Line",
     icon: PenTool,
-    kind: 'signature',
+    kind: "signature",
     size: { width: 240, height: 70 },
-    defaultConfig: { color: '#000000', bold: false, bgColor: 'transparent', linkedVar: '{{signatory_name}}', label: 'Authorized Signature' }
+    defaultConfig: {
+      color: "#000000",
+      bold: false,
+      bgColor: "transparent",
+      linkedVar: "{{signatory_name}}",
+      label: "Authorized Signature",
+    },
   },
   {
-    label: 'QR Code',
+    label: "QR Code",
     icon: QrCode,
-    kind: 'qr',
+    kind: "qr",
     size: { width: 120, height: 120 },
-    defaultConfig: { linkedVar: '{{ticket_id}}' }
+    defaultConfig: { linkedVar: "{{ticket_id}}" },
   },
   {
-    label: 'Barcode',
+    label: "Barcode",
     icon: ScanLine,
-    kind: 'barcode',
+    kind: "barcode",
     size: { width: 220, height: 70 },
-    defaultConfig: { linkedVar: '{{ticket_id}}' }
+    defaultConfig: { linkedVar: "{{ticket_id}}" },
   },
 ];
 
 // Kinds where the box-level color / bold / background controls make sense.
-const STYLEABLE_KINDS = ['text', 'table', 'divider', 'pagebreak', 'signature', 'variable'];
+const STYLEABLE_KINDS = [
+  "text",
+  "table",
+  "divider",
+  "pagebreak",
+  "signature",
+  "variable",
+];
 // Kinds that represent live data and need a "which variable" picker.
-const LINKABLE_KINDS = ['signature', 'qr', 'barcode'];
+const LINKABLE_KINDS = ["signature", "qr", "barcode"];
 // Kinds you can click into and type in directly.
-const EDITABLE_KINDS = ['text', 'table'];
+const EDITABLE_KINDS = ["text", "table"];
 
 // Walks a temporary HTML container and substitutes {{variables}} - in text
 // nodes it wraps the replaced value in a highlight span for preview; in
@@ -266,7 +333,11 @@ function substituteWalk(container, sampleData, highlight) {
   const varToken = /^{{\s*[\w.]+\s*}}$/;
   const varTokenGlobal = /{{\s*[\w.]+\s*}}/g;
 
-  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
+  const walker = document.createTreeWalker(
+    container,
+    NodeFilter.SHOW_TEXT,
+    null,
+  );
   const textNodes = [];
   let node = walker.nextNode();
   while (node) {
@@ -276,18 +347,19 @@ function substituteWalk(container, sampleData, highlight) {
 
   textNodes.forEach((textNode) => {
     const original = textNode.textContent;
-    if (!original.includes('{{')) return;
+    if (!original.includes("{{")) return;
     const parts = original.split(/({{\s*[\w.]+\s*}})/g);
     if (parts.length === 1) return;
 
     const frag = document.createDocumentFragment();
     parts.forEach((part) => {
       const isVar = varToken.test(part);
-      const value = isVar ? sampleData[part.replace(/\s+/g, '')] : undefined;
+      const value = isVar ? sampleData[part.replace(/\s+/g, "")] : undefined;
       if (isVar && value !== undefined) {
         if (highlight) {
-          const span = document.createElement('span');
-          span.className = 'bg-yellow-100 text-yellow-900 font-semibold px-1 rounded';
+          const span = document.createElement("span");
+          span.className =
+            "bg-yellow-100 text-yellow-900 font-semibold px-1 rounded";
           span.textContent = value;
           frag.appendChild(span);
         } else {
@@ -300,11 +372,11 @@ function substituteWalk(container, sampleData, highlight) {
     textNode.parentNode.replaceChild(frag, textNode);
   });
 
-  container.querySelectorAll('*').forEach((el) => {
+  container.querySelectorAll("*").forEach((el) => {
     [...el.attributes].forEach((attr) => {
-      if (attr.value.includes('{{')) {
+      if (attr.value.includes("{{")) {
         const newVal = attr.value.replace(varTokenGlobal, (m) => {
-          const value = sampleData[m.replace(/\s+/g, '')];
+          const value = sampleData[m.replace(/\s+/g, "")];
           return value !== undefined ? value : m;
         });
         el.setAttribute(attr.name, newVal);
@@ -314,7 +386,7 @@ function substituteWalk(container, sampleData, highlight) {
 }
 
 function substituteVariablesInHTML(rawHtml, sampleData, highlight = true) {
-  const container = document.createElement('div');
+  const container = document.createElement("div");
   container.innerHTML = rawHtml;
   substituteWalk(container, sampleData, highlight);
   return container.innerHTML;
@@ -327,7 +399,13 @@ function substituteVariablesInHTML(rawHtml, sampleData, highlight = true) {
 // regenerates a table's grid) - never on every render - so typing never
 // gets its cursor reset.
 // ---------------------------------------------------------------------------
-function EditableFloatingContent({ html, resetKey, style, onCommit, onFocusEditable }) {
+function EditableFloatingContent({
+  html,
+  resetKey,
+  style,
+  onCommit,
+  onFocusEditable,
+}) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -353,7 +431,19 @@ function EditableFloatingContent({ html, resetKey, style, onCommit, onFocusEdita
 // ---------------------------------------------------------------------------
 // A single draggable / resizable / deletable / stylable box on the canvas.
 // ---------------------------------------------------------------------------
-function FloatingBoxView({ el, zoom, selected, variableOptions, onSelect, onChange, onDelete, onBringFront, onSendBack, onToggleBehindText, onFocusEditable }) {
+function FloatingBoxView({
+  el,
+  zoom,
+  selected,
+  variableOptions,
+  onSelect,
+  onChange,
+  onDelete,
+  onBringFront,
+  onSendBack,
+  onToggleBehindText,
+  onFocusEditable,
+}) {
   const isBehindText = el.z < TEXT_LAYER_Z;
   const isEditable = EDITABLE_KINDS.includes(el.kind);
   const isStyleable = STYLEABLE_KINDS.includes(el.kind);
@@ -378,11 +468,11 @@ function FloatingBoxView({ el, zoom, selected, variableOptions, onSelect, onChan
       onChange({ x: Math.round(startLeft + dx), y: Math.round(startTop + dy) });
     };
     const onUp = () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
     };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
   };
 
   const startResize = (e) => {
@@ -397,20 +487,28 @@ function FloatingBoxView({ el, zoom, selected, variableOptions, onSelect, onChan
     const onMove = (ev) => {
       const dw = (ev.clientX - startX) / scale;
       const dh = (ev.clientY - startY) / scale;
-      onChange({ width: Math.max(20, Math.round(startW + dw)), height: Math.max(20, Math.round(startH + dh)) });
+      onChange({
+        width: Math.max(20, Math.round(startW + dw)),
+        height: Math.max(20, Math.round(startH + dh)),
+      });
     };
     const onUp = () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
     };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
   };
 
   const applyGrid = () => {
     const rows = Math.max(1, Math.min(12, parseInt(pendingRows, 10) || 1));
     const cols = Math.max(1, Math.min(12, parseInt(pendingCols, 10) || 1));
-    onChange({ rows, cols, html: generateTableHTML(rows, cols), gridVersion: (el.gridVersion || 0) + 1 });
+    onChange({
+      rows,
+      cols,
+      html: generateTableHTML(rows, cols),
+      gridVersion: (el.gridVersion || 0) + 1,
+    });
   };
 
   // Whole box is draggable, EXCEPT once an editable (text/table) box is
@@ -419,17 +517,24 @@ function FloatingBoxView({ el, zoom, selected, variableOptions, onSelect, onChan
   const wholeBoxDraggable = !isEditable || !selected;
 
   const innerStyle = {
-    color: el.color || '#111827',
+    color: el.color || "#111827",
     fontWeight: el.bold ? 700 : 400,
-    background: el.bgColor && el.bgColor !== 'transparent' ? el.bgColor : 'transparent',
-    padding: isEditable ? '4px 6px' : 0,
-    boxSizing: 'border-box',
+    background:
+      el.bgColor && el.bgColor !== "transparent" ? el.bgColor : "transparent",
+    padding: isEditable ? "4px 6px" : 0,
+    boxSizing: "border-box",
   };
 
   return (
     <div
-      className={`floating-box absolute group ${wholeBoxDraggable ? 'cursor-move' : ''} ${selected ? 'outline outline-2 outline-blue-500' : 'hover:outline hover:outline-1 hover:outline-blue-300'}`}
-      style={{ left: el.x, top: el.y, width: el.width, height: el.height, zIndex: el.z }}
+      className={`floating-box absolute group ${wholeBoxDraggable ? "cursor-move" : ""} ${selected ? "outline outline-2 outline-blue-500" : "hover:outline hover:outline-1 hover:outline-blue-300"}`}
+      style={{
+        left: el.x,
+        top: el.y,
+        width: el.width,
+        height: el.height,
+        zIndex: el.z,
+      }}
       onMouseDown={(e) => {
         if (wholeBoxDraggable) {
           startDrag(e);
@@ -437,7 +542,10 @@ function FloatingBoxView({ el, zoom, selected, variableOptions, onSelect, onChan
           e.stopPropagation();
         }
       }}
-      onClick={(e) => { e.stopPropagation(); onSelect(); }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect();
+      }}
     >
       {isEditable ? (
         <EditableFloatingContent
@@ -448,7 +556,10 @@ function FloatingBoxView({ el, zoom, selected, variableOptions, onSelect, onChan
           onFocusEditable={onFocusEditable}
         />
       ) : (
-        <div className="w-full h-full pointer-events-none overflow-hidden" dangerouslySetInnerHTML={{ __html: renderFloatingContent(el) }} />
+        <div
+          className="w-full h-full pointer-events-none overflow-hidden"
+          dangerouslySetInnerHTML={{ __html: renderFloatingContent(el) }}
+        />
       )}
 
       {/* Move handle - only needed once an editable box is selected (its
@@ -466,8 +577,11 @@ function FloatingBoxView({ el, zoom, selected, variableOptions, onSelect, onChan
       {/* Delete - visible on hover, or always while selected */}
       <button
         onMouseDown={(e) => e.stopPropagation()}
-        onClick={(e) => { e.stopPropagation(); onDelete(); }}
-        className={`absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white items-center justify-center shadow z-[9999] ${selected ? 'flex' : 'hidden group-hover:flex'}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+        className={`absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white items-center justify-center shadow z-[9999] ${selected ? "flex" : "hidden group-hover:flex"}`}
         title="Delete"
       >
         <X className="w-3 h-3" />
@@ -480,14 +594,27 @@ function FloatingBoxView({ el, zoom, selected, variableOptions, onSelect, onChan
           onClick={(e) => e.stopPropagation()}
           className="absolute -top-9 left-0 flex items-center gap-0.5 bg-slate-900 text-white px-1.5 py-1 rounded shadow-lg text-[10px] whitespace-nowrap z-[9999] flex-wrap max-w-[420px]"
         >
-          <button onClick={onBringFront} className="p-1 hover:bg-white/20 rounded" title="Bring to front">
+          <button
+            onClick={onBringFront}
+            className="p-1 hover:bg-white/20 rounded"
+            title="Bring to front"
+          >
             <BringToFront className="w-3 h-3" />
           </button>
-          <button onClick={onSendBack} className="p-1 hover:bg-white/20 rounded" title="Send to back">
+          <button
+            onClick={onSendBack}
+            className="p-1 hover:bg-white/20 rounded"
+            title="Send to back"
+          >
             <SendToBack className="w-3 h-3" />
           </button>
-          <button onClick={onToggleBehindText} className="p-1 hover:bg-white/20 rounded flex items-center gap-1" title="Toggle in front of / behind the text">
-            <Layers className="w-3 h-3" /> {isBehindText ? 'Behind text' : 'Above text'}
+          <button
+            onClick={onToggleBehindText}
+            className="p-1 hover:bg-white/20 rounded flex items-center gap-1"
+            title="Toggle in front of / behind the text"
+          >
+            <Layers className="w-3 h-3" />{" "}
+            {isBehindText ? "Behind text" : "Above text"}
           </button>
 
           {isStyleable && (
@@ -495,26 +622,34 @@ function FloatingBoxView({ el, zoom, selected, variableOptions, onSelect, onChan
               <span className="w-px h-4 bg-white/20 mx-0.5" />
               <button
                 onClick={() => onChange({ bold: !el.bold })}
-                className={`p-1 rounded ${el.bold ? 'bg-white/30' : 'hover:bg-white/20'}`}
+                className={`p-1 rounded ${el.bold ? "bg-white/30" : "hover:bg-white/20"}`}
                 title="Bold"
               >
                 <Bold className="w-3 h-3" />
               </button>
               <input
                 type="color"
-                value={el.color || '#000000'}
+                value={el.color || "#000000"}
                 onChange={(e) => onChange({ color: e.target.value })}
                 className="w-5 h-5 border-0 p-0 bg-transparent cursor-pointer"
                 title="Text / line color"
               />
               <input
                 type="color"
-                value={el.bgColor && el.bgColor !== 'transparent' ? el.bgColor : '#ffffff'}
+                value={
+                  el.bgColor && el.bgColor !== "transparent"
+                    ? el.bgColor
+                    : "#ffffff"
+                }
                 onChange={(e) => onChange({ bgColor: e.target.value })}
                 className="w-5 h-5 border-0 p-0 bg-transparent cursor-pointer"
                 title="Background color"
               />
-              <button onClick={() => onChange({ bgColor: 'transparent' })} className="px-1 py-0.5 hover:bg-white/20 rounded text-[9px]" title="No background">
+              <button
+                onClick={() => onChange({ bgColor: "transparent" })}
+                className="px-1 py-0.5 hover:bg-white/20 rounded text-[9px]"
+                title="No background"
+              >
                 No fill
               </button>
             </>
@@ -530,13 +665,15 @@ function FloatingBoxView({ el, zoom, selected, variableOptions, onSelect, onChan
                 title="Which value this represents"
               >
                 {variableOptions.map((v) => (
-                  <option key={v.tag} value={v.tag}>{v.label}</option>
+                  <option key={v.tag} value={v.tag}>
+                    {v.label}
+                  </option>
                 ))}
               </select>
             </>
           )}
 
-          {el.kind === 'table' && (
+          {el.kind === "table" && (
             <>
               <span className="w-px h-4 bg-white/20 mx-0.5" />
               <input
@@ -558,7 +695,11 @@ function FloatingBoxView({ el, zoom, selected, variableOptions, onSelect, onChan
                 className="w-8 bg-slate-800 text-white text-[10px] px-1 py-0.5 rounded border border-white/20"
                 title="Columns"
               />
-              <button onClick={applyGrid} className="px-1.5 py-0.5 bg-blue-600 hover:bg-blue-700 rounded text-[10px] font-bold" title="Rebuild the grid (clears cell contents)">
+              <button
+                onClick={applyGrid}
+                className="px-1.5 py-0.5 bg-blue-600 hover:bg-blue-700 rounded text-[10px] font-bold"
+                title="Rebuild the grid (clears cell contents)"
+              >
                 Apply
               </button>
             </>
@@ -579,16 +720,34 @@ function FloatingBoxView({ el, zoom, selected, variableOptions, onSelect, onChan
 }
 
 export function Reports() {
-  const [activeView, setActiveView] = useState('list'); // 'list' | 'editor' | 'preview'
+  const [activeView, setActiveView] = useState("list"); // 'list' | 'editor' | 'preview'
 
-  const [reports, setReports] = useState(() => loadFromStorage(STORAGE_KEYS.reports, DEFAULT_REPORTS));
-  const [customVariables, setCustomVariables] = useState(() => loadFromStorage(STORAGE_KEYS.customVariables, []));
-  const [assets, setAssets] = useState(() => loadFromStorage(STORAGE_KEYS.assets, [
-    { id: 'asset-placeholder', name: 'Placeholder Logo', dataUrl: PLACEHOLDER_LOGO_DATA_URL }
-  ]));
+  const [reports, setReports] = useState(() =>
+    loadFromStorage(STORAGE_KEYS.reports, DEFAULT_REPORTS).map((report) =>
+      report.id === PASSENGER_TICKET_REPORT.id &&
+      report.content.includes("BOARDING PASS & RECEIPT")
+        ? PASSENGER_TICKET_REPORT
+        : report,
+    ),
+  );
+  const [customVariables, setCustomVariables] = useState(() =>
+    loadFromStorage(STORAGE_KEYS.customVariables, []),
+  );
+  const [assets, setAssets] = useState(() =>
+    loadFromStorage(STORAGE_KEYS.assets, [
+      {
+        id: "asset-placeholder",
+        name: "Placeholder Logo",
+        dataUrl: PLACEHOLDER_LOGO_DATA_URL,
+      },
+    ]),
+  );
 
   useEffect(() => saveToStorage(STORAGE_KEYS.reports, reports), [reports]);
-  useEffect(() => saveToStorage(STORAGE_KEYS.customVariables, customVariables), [customVariables]);
+  useEffect(
+    () => saveToStorage(STORAGE_KEYS.customVariables, customVariables),
+    [customVariables],
+  );
   useEffect(() => saveToStorage(STORAGE_KEYS.assets, assets), [assets]);
 
   const [currentReport, setCurrentReport] = useState(null);
@@ -610,8 +769,14 @@ export function Reports() {
   // which without this guard would insert the item a second time (once
   // inline via the click handler, once as a floating box via the drop).
   const paletteDragRef = useRef(false);
-  const markDragStarted = () => { paletteDragRef.current = true; };
-  const markDragEnded = () => { setTimeout(() => { paletteDragRef.current = false; }, 50); };
+  const markDragStarted = () => {
+    paletteDragRef.current = true;
+  };
+  const markDragEnded = () => {
+    setTimeout(() => {
+      paletteDragRef.current = false;
+    }, 50);
+  };
   const guardClick = (fn) => (e) => {
     if (paletteDragRef.current) return;
     fn(e);
@@ -635,108 +800,121 @@ export function Reports() {
   }, [currentReport?.id]);
 
   // Paper size configuration
-  const [paperSize, setPaperSize] = useState('A4');
-  const [customWidth, setCustomWidth] = useState('210');
-  const [customHeight, setCustomHeight] = useState('297');
-  const [customUnit, setCustomUnit] = useState('mm');
+  const [paperSize, setPaperSize] = useState("A4");
+  const [customWidth, setCustomWidth] = useState("210");
+  const [customHeight, setCustomHeight] = useState("297");
+  const [customUnit, setCustomUnit] = useState("mm");
   const [zoom, setZoom] = useState(100);
 
-  const pageSize = getPageSizePx(paperSize, customWidth, customHeight, customUnit);
+  const pageSize = getPageSizePx(
+    paperSize,
+    customWidth,
+    customHeight,
+    customUnit,
+  );
 
   // Left panel tabs: variables | elements | images
-  const [leftTab, setLeftTab] = useState('variables');
-  const [variableSearch, setVariableSearch] = useState('');
+  const [leftTab, setLeftTab] = useState("variables");
+  const [variableSearch, setVariableSearch] = useState("");
   const [showAddVariable, setShowAddVariable] = useState(false);
-  const [newVarLabel, setNewVarLabel] = useState('');
-  const [newVarKey, setNewVarKey] = useState('');
-  const [imageUrlInput, setImageUrlInput] = useState('');
+  const [newVarLabel, setNewVarLabel] = useState("");
+  const [newVarKey, setNewVarKey] = useState("");
+  const [imageUrlInput, setImageUrlInput] = useState("");
   const [fontSizeInput, setFontSizeInput] = useState(16);
 
   // Categorized Dynamic Variables Palette
   const VARIABLE_GROUPS = [
     {
-      category: 'Passenger & Ticket',
+      category: "Passenger & Ticket",
       vars: [
-        { label: 'Passenger Name', tag: '{{passenger_name}}' },
-        { label: 'Bed / Berth No.', tag: '{{bed_number}}' },
-        { label: 'Class Type', tag: '{{accommodation_class}}' },
-        { label: 'Ticket Price', tag: '{{ticket_price}}' },
-        { label: 'Payment Status', tag: '{{payment_status}}' },
-        { label: 'Ticket Reference ID', tag: '{{ticket_id}}' },
-      ]
+        { label: "Passenger Name", tag: "{{passenger_name}}" },
+        { label: "Bed / Berth No.", tag: "{{bed_number}}" },
+        { label: "Class Type", tag: "{{accommodation_class}}" },
+        { label: "Ticket Price", tag: "{{ticket_price}}" },
+        { label: "Payment Status", tag: "{{payment_status}}" },
+        { label: "Ticket Reference ID", tag: "{{ticket_id}}" },
+      ],
     },
     {
-      category: 'Vessel & Fleet',
+      category: "Vessel & Fleet",
       vars: [
-        { label: 'Vessel Name', tag: '{{vessel_name}}' },
-        { label: 'IMO / Call Sign', tag: '{{vessel_imo}}' },
-        { label: 'Captain Name', tag: '{{captain_name}}' },
-        { label: 'Max Capacity', tag: '{{vessel_capacity}}' },
-      ]
+        { label: "Vessel Name", tag: "{{vessel_name}}" },
+        { label: "IMO / Call Sign", tag: "{{vessel_imo}}" },
+        { label: "Captain Name", tag: "{{captain_name}}" },
+        { label: "Max Capacity", tag: "{{vessel_capacity}}" },
+      ],
     },
     {
-      category: 'Route & Port',
+      category: "Route & Port",
       vars: [
-        { label: 'Origin Port', tag: '{{origin_port}}' },
-        { label: 'Destination Port', tag: '{{destination_port}}' },
-        { label: 'Departure Date/Time', tag: '{{departure_date}}' },
-        { label: 'Arrival Date/Time', tag: '{{arrival_date}}' },
-      ]
+        { label: "Origin Port", tag: "{{origin_port}}" },
+        { label: "Destination Port", tag: "{{destination_port}}" },
+        { label: "Departure Date/Time", tag: "{{departure_date}}" },
+        { label: "Arrival Date/Time", tag: "{{arrival_date}}" },
+      ],
     },
     {
-      category: 'Financial & Monthly Analytics',
+      category: "Financial & Monthly Analytics",
       vars: [
-        { label: 'Report Month', tag: '{{report_month}}' },
-        { label: 'Report Year', tag: '{{report_year}}' },
-        { label: 'Passenger Fare Revenue', tag: '{{total_passenger_revenue}}' },
-        { label: 'Cargo & Freight Revenue', tag: '{{total_cargo_revenue}}' },
-        { label: 'Gross Earnings', tag: '{{gross_monthly_earnings}}' },
-        { label: 'Operational Cost', tag: '{{total_operational_cost}}' },
-      ]
+        { label: "Report Month", tag: "{{report_month}}" },
+        { label: "Report Year", tag: "{{report_year}}" },
+        { label: "Passenger Fare Revenue", tag: "{{total_passenger_revenue}}" },
+        { label: "Cargo & Freight Revenue", tag: "{{total_cargo_revenue}}" },
+        { label: "Gross Earnings", tag: "{{gross_monthly_earnings}}" },
+        { label: "Operational Cost", tag: "{{total_operational_cost}}" },
+      ],
     },
     {
-      category: 'System & Metadata',
+      category: "System & Metadata",
       vars: [
-        { label: 'Current Date', tag: '{{current_date}}' },
-        { label: 'Logged Admin', tag: '{{admin_username}}' },
-        { label: 'Company Name', tag: '{{company_name}}' },
-        { label: 'Signatory Name', tag: '{{signatory_name}}' },
-      ]
+        { label: "Current Date", tag: "{{current_date}}" },
+        { label: "Logged Admin", tag: "{{admin_username}}" },
+        { label: "Company Name", tag: "{{company_name}}" },
+        { label: "Signatory Name", tag: "{{signatory_name}}" },
+      ],
     },
     ...(customVariables.length > 0
-      ? [{ category: 'Custom Variables', vars: customVariables, isCustom: true }]
-      : [])
+      ? [
+          {
+            category: "Custom Variables",
+            vars: customVariables,
+            isCustom: true,
+          },
+        ]
+      : []),
   ];
 
   const ALL_VARIABLE_OPTIONS = VARIABLE_GROUPS.flatMap((g) => g.vars);
 
   // Sample mock data for live preview (kept in sync with variables above)
   const SAMPLE_DATA = {
-    '{{passenger_name}}': 'Juan Cruz',
-    '{{bed_number}}': 'B-104 Upper',
-    '{{accommodation_class}}': 'Tourist Aircon',
-    '{{ticket_price}}': '₱1,250.00',
-    '{{payment_status}}': 'PAID',
-    '{{ticket_id}}': 'TKT-2026-9901',
-    '{{vessel_name}}': 'MV Trans-Island Express',
-    '{{vessel_imo}}': 'IMO: 9123456',
-    '{{captain_name}}': 'Capt. R. Rodriguez',
-    '{{vessel_capacity}}': '450 Passengers',
-    '{{origin_port}}': 'Port of Manila',
-    '{{destination_port}}': 'Cebu International Port',
-    '{{departure_date}}': 'August 30, 2026 - 08:00 AM',
-    '{{arrival_date}}': 'August 31, 2026 - 04:00 AM',
-    '{{report_month}}': 'August',
-    '{{report_year}}': '2026',
-    '{{total_passenger_revenue}}': '₱4,850,000.00',
-    '{{total_cargo_revenue}}': '₱2,100,000.00',
-    '{{gross_monthly_earnings}}': '₱6,950,000.00',
-    '{{total_operational_cost}}': '₱3,200,000.00',
-    '{{current_date}}': new Date().toLocaleDateString(),
-    '{{admin_username}}': 'Jeff',
-    '{{company_name}}': 'Maritime Logistics Inc.',
-    '{{signatory_name}}': 'Jeff Santos',
-    ...Object.fromEntries(customVariables.map((v) => [v.tag, v.sample || `[${v.label}]`])),
+    "{{passenger_name}}": "Juan Cruz",
+    "{{bed_number}}": "B-104 Upper",
+    "{{accommodation_class}}": "Tourist Aircon",
+    "{{ticket_price}}": "₱1,250.00",
+    "{{payment_status}}": "PAID",
+    "{{ticket_id}}": "TKT-2026-9901",
+    "{{vessel_name}}": "MV Trans-Island Express",
+    "{{vessel_imo}}": "IMO: 9123456",
+    "{{captain_name}}": "Capt. R. Rodriguez",
+    "{{vessel_capacity}}": "450 Passengers",
+    "{{origin_port}}": "Port of Manila",
+    "{{destination_port}}": "Cebu International Port",
+    "{{departure_date}}": "August 30, 2026 - 08:00 AM",
+    "{{arrival_date}}": "August 31, 2026 - 04:00 AM",
+    "{{report_month}}": "August",
+    "{{report_year}}": "2026",
+    "{{total_passenger_revenue}}": "₱4,850,000.00",
+    "{{total_cargo_revenue}}": "₱2,100,000.00",
+    "{{gross_monthly_earnings}}": "₱6,950,000.00",
+    "{{total_operational_cost}}": "₱3,200,000.00",
+    "{{current_date}}": new Date().toLocaleDateString(),
+    "{{admin_username}}": "Jeff",
+    "{{company_name}}": "Maritime Logistics Inc.",
+    "{{signatory_name}}": "Jeff Santos",
+    ...Object.fromEntries(
+      customVariables.map((v) => [v.tag, v.sample || `[${v.label}]`]),
+    ),
   };
 
   // ---------------------------------------------------------------------
@@ -757,7 +935,7 @@ export function Reports() {
     const target = getTarget();
     if (!target) return;
     target.focus();
-    document.execCommand('insertHTML', false, html);
+    document.execCommand("insertHTML", false, html);
     setIsDirty(true);
   };
 
@@ -771,16 +949,19 @@ export function Reports() {
     const target = getTarget();
     if (!size || !target) return;
     target.focus();
-    document.execCommand('fontSize', false, '7');
+    document.execCommand("fontSize", false, "7");
     target.querySelectorAll('font[size="7"]').forEach((el) => {
-      el.removeAttribute('size');
+      el.removeAttribute("size");
       el.style.fontSize = `${size}px`;
     });
     setIsDirty(true);
   };
 
   const addAsset = (name, dataUrl) => {
-    setAssets((prev) => [{ id: `asset-${Date.now()}`, name, dataUrl }, ...prev]);
+    setAssets((prev) => [
+      { id: `asset-${Date.now()}`, name, dataUrl },
+      ...prev,
+    ]);
   };
 
   const removeAsset = (id) => {
@@ -791,7 +972,10 @@ export function Reports() {
   // Floating element (box) management
   // ---------------------------------------------------------------------
   const updateFloatingElements = (updater) => {
-    setCurrentReport((prev) => ({ ...prev, floatingElements: updater(prev.floatingElements || []) }));
+    setCurrentReport((prev) => ({
+      ...prev,
+      floatingElements: updater(prev.floatingElements || []),
+    }));
     setIsDirty(true);
   };
 
@@ -799,12 +983,17 @@ export function Reports() {
     const id = `fl-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const existing = currentReport?.floatingElements || [];
     const z = existing.reduce((m, e) => Math.max(m, e.z), TEXT_LAYER_Z) + 1;
-    updateFloatingElements((els) => [...els, { id, x: 40, y: 40, width: 160, height: 60, z, ...partial }]);
+    updateFloatingElements((els) => [
+      ...els,
+      { id, x: 40, y: 40, width: 160, height: 60, z, ...partial },
+    ]);
     setSelectedFloatingId(id);
   };
 
   const updateFloatingElement = (id, patch) => {
-    updateFloatingElements((els) => els.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+    updateFloatingElements((els) =>
+      els.map((e) => (e.id === id ? { ...e, ...patch } : e)),
+    );
   };
 
   const deleteFloatingElement = (id) => {
@@ -829,13 +1018,18 @@ export function Reports() {
     const el = els.find((e) => e.id === id);
     if (!el) return;
     const isBehind = el.z < TEXT_LAYER_Z;
-    updateFloatingElement(id, { z: isBehind ? TEXT_LAYER_Z + 1 : TEXT_LAYER_Z - 1 });
+    updateFloatingElement(id, {
+      z: isBehind ? TEXT_LAYER_Z + 1 : TEXT_LAYER_Z - 1,
+    });
   };
 
   const clientToPaperCoords = (clientX, clientY) => {
     const rect = paperRef.current.getBoundingClientRect();
     const scale = zoom / 100;
-    return { x: Math.round((clientX - rect.left) / scale), y: Math.round((clientY - rect.top) / scale) };
+    return {
+      x: Math.round((clientX - rect.left) / scale),
+      y: Math.round((clientY - rect.top) / scale),
+    };
   };
 
   // Dropping from the palette onto the page always creates a floating box -
@@ -847,14 +1041,17 @@ export function Reports() {
     // A file dragged straight from the desktop (e.g. a logo from Finder/Explorer)
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const file = e.dataTransfer.files[0];
-      if (file.type.startsWith('image/')) {
+      if (file.type.startsWith("image/")) {
         const reader = new FileReader();
         reader.onload = (ev) => {
           const dataUrl = ev.target.result;
           addFloatingElement({
-            kind: 'image',
+            kind: "image",
             html: `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:contain;" alt="${file.name}" />`,
-            x, y, width: 160, height: 160
+            x,
+            y,
+            width: 160,
+            height: 160,
           });
           addAsset(file.name, dataUrl);
         };
@@ -863,24 +1060,44 @@ export function Reports() {
       return;
     }
 
-    const varTag = e.dataTransfer.getData('application/x-report-variable');
-    const elJson = e.dataTransfer.getData('application/x-report-element');
-    const imgData = e.dataTransfer.getData('application/x-report-image');
+    const varTag = e.dataTransfer.getData("application/x-report-variable");
+    const elJson = e.dataTransfer.getData("application/x-report-element");
+    const imgData = e.dataTransfer.getData("application/x-report-image");
 
     if (varTag) {
-      addFloatingElement({ kind: 'variable', tag: varTag, color: '#1d4ed8', bold: false, bgColor: '#eff6ff', x, y, width: 190, height: 40 });
+      addFloatingElement({
+        kind: "variable",
+        tag: varTag,
+        color: "#1d4ed8",
+        bold: false,
+        bgColor: "#eff6ff",
+        x,
+        y,
+        width: 190,
+        height: 40,
+      });
     } else if (elJson) {
       try {
         const { kind, config, width, height } = JSON.parse(elJson);
-        addFloatingElement({ kind, ...config, x, y, width: width || 300, height: height || 60 });
+        addFloatingElement({
+          kind,
+          ...config,
+          x,
+          y,
+          width: width || 300,
+          height: height || 60,
+        });
       } catch {
         // ignore malformed payload
       }
     } else if (imgData) {
       addFloatingElement({
-        kind: 'image',
+        kind: "image",
         html: `<img src="${imgData}" style="width:100%;height:100%;object-fit:contain;" alt="logo" />`,
-        x, y, width: 160, height: 160
+        x,
+        y,
+        width: 160,
+        height: 160,
       });
     }
   };
@@ -888,7 +1105,7 @@ export function Reports() {
   const handlePaperMouseDown = (e) => {
     // Deselect the currently selected box when clicking anything that
     // isn't part of a floating box (e.g. the text layer, or empty page).
-    if (!e.target.closest('.floating-box')) {
+    if (!e.target.closest(".floating-box")) {
       setSelectedFloatingId(null);
     }
   };
@@ -899,19 +1116,23 @@ export function Reports() {
   const openNewReport = () => {
     setCurrentReport({
       id: `rep-${Date.now()}`,
-      title: 'Untitled Report Template',
-      paperSize: 'A4',
+      title: "Untitled Report Template",
+      paperSize: "A4",
       floatingElements: [],
-      content: '<h2>New Report Document</h2><p>Type your template here. Click a variable/element/image to insert it inline, or drag it onto the page to place it as a movable box...</p>'
+      content:
+        "<h2>New Report Document</h2><p>Type your template here. Click a variable/element/image to insert it inline, or drag it onto the page to place it as a movable box...</p>",
     });
-    setPaperSize('A4');
+    setPaperSize("A4");
     setIsDirty(false);
-    setActiveView('editor');
+    setActiveView("editor");
   };
 
   const editReport = (rep) => {
     setCurrentReport({ floatingElements: [], ...rep });
-    if (rep.paperSize && ['A4', 'Letter', 'Legal', 'Receipt'].includes(rep.paperSize)) {
+    if (
+      rep.paperSize &&
+      ["A4", "Letter", "Legal", "Receipt"].includes(rep.paperSize)
+    ) {
       setPaperSize(rep.paperSize);
     } else if (rep.paperSize) {
       // Previously-saved custom dimension string like "210x297mm"
@@ -920,78 +1141,94 @@ export function Reports() {
         setCustomWidth(match[1]);
         setCustomHeight(match[2]);
         setCustomUnit(match[3]);
-        setPaperSize('Custom');
+        setPaperSize("Custom");
       } else {
-        setPaperSize('A4');
+        setPaperSize("A4");
       }
     } else {
-      setPaperSize('A4');
+      setPaperSize("A4");
     }
     setIsDirty(false);
-    setActiveView('editor');
+    setActiveView("editor");
   };
 
   const duplicateReport = (rep) => {
-    const copy = { floatingElements: [], ...rep, id: `rep-${Date.now()}`, title: `${rep.title} (Copy)` };
+    const copy = {
+      floatingElements: [],
+      ...rep,
+      id: `rep-${Date.now()}`,
+      title: `${rep.title} (Copy)`,
+    };
     setReports((prev) => [copy, ...prev]);
   };
 
   const saveReport = () => {
-    const updatedContent = editorRef.current ? editorRef.current.innerHTML : currentReport.content;
+    const updatedContent = editorRef.current
+      ? editorRef.current.innerHTML
+      : currentReport.content;
     const repToSave = {
       ...currentReport,
       content: updatedContent,
-      paperSize: paperSize === 'Custom' ? `${customWidth}x${customHeight}${customUnit}` : paperSize
+      paperSize:
+        paperSize === "Custom"
+          ? `${customWidth}x${customHeight}${customUnit}`
+          : paperSize,
     };
 
     setReports((prev) => {
       const exists = prev.some((r) => r.id === repToSave.id);
-      return exists ? prev.map((r) => (r.id === repToSave.id ? repToSave : r)) : [repToSave, ...prev];
+      return exists
+        ? prev.map((r) => (r.id === repToSave.id ? repToSave : r))
+        : [repToSave, ...prev];
     });
 
     setIsDirty(false);
-    setActiveView('list');
+    setActiveView("list");
   };
 
   const deleteReport = (id) => {
-    if (confirm('Delete this report template? This cannot be undone.')) {
+    if (confirm("Delete this report template? This cannot be undone.")) {
       setReports((prev) => prev.filter((r) => r.id !== id));
     }
   };
 
   const confirmDiscardIfDirty = () => {
     if (!isDirty) return true;
-    return confirm('You have unsaved changes. Leave without saving?');
+    return confirm("You have unsaved changes. Leave without saving?");
   };
 
   const goToList = () => {
     if (!confirmDiscardIfDirty()) return;
     setIsDirty(false);
-    setActiveView('list');
+    setActiveView("list");
   };
 
-  const goToPreview = () => setActiveView('preview');
+  const goToPreview = () => setActiveView("preview");
 
   // ---------------------------------------------------------------------
   // Import / export templates as JSON, so reports can be backed up or
   // shared between environments without a database round-trip.
   // ---------------------------------------------------------------------
   const exportReport = (rep) => {
-    const blob = new Blob([JSON.stringify(rep, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(rep, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `${rep.title.replace(/[^a-z0-9]+/gi, '_').toLowerCase() || 'report'}.json`;
+    a.download = `${rep.title.replace(/[^a-z0-9]+/gi, "_").toLowerCase() || "report"}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const exportAllReports = () => {
-    const blob = new Blob([JSON.stringify(reports, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(reports, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = 'report_templates_backup.json';
+    a.download = "report_templates_backup.json";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -1007,15 +1244,17 @@ export function Reports() {
         const withNewIds = incoming.map((r) => ({
           floatingElements: [],
           ...r,
-          id: `rep-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+          id: `rep-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         }));
         setReports((prev) => [...withNewIds, ...prev]);
       } catch {
-        alert('That file could not be read as a report template (invalid JSON).');
+        alert(
+          "That file could not be read as a report template (invalid JSON).",
+        );
       }
     };
     reader.readAsText(file);
-    e.target.value = '';
+    e.target.value = "";
   };
 
   // ---------------------------------------------------------------------
@@ -1027,13 +1266,15 @@ export function Reports() {
     const reader = new FileReader();
     reader.onload = (ev) => addAsset(file.name, ev.target.result);
     reader.readAsDataURL(file);
-    e.target.value = '';
+    e.target.value = "";
   };
 
   const insertImageFromUrl = () => {
     if (!imageUrlInput.trim()) return;
-    insertHTMLAtCursor(`<img src="${imageUrlInput.trim()}" style="max-width:220px;" alt="image" />`);
-    setImageUrlInput('');
+    insertHTMLAtCursor(
+      `<img src="${imageUrlInput.trim()}" style="max-width:220px;" alt="image" />`,
+    );
+    setImageUrlInput("");
   };
 
   // ---------------------------------------------------------------------
@@ -1041,11 +1282,17 @@ export function Reports() {
   // ---------------------------------------------------------------------
   const addCustomVariable = () => {
     if (!newVarLabel.trim() || !newVarKey.trim()) return;
-    const cleanKey = newVarKey.trim().replace(/[^a-z0-9_]/gi, '_').toLowerCase();
+    const cleanKey = newVarKey
+      .trim()
+      .replace(/[^a-z0-9_]/gi, "_")
+      .toLowerCase();
     const tag = `{{${cleanKey}}}`;
-    setCustomVariables((prev) => [...prev, { label: newVarLabel.trim(), tag, sample: `[${newVarLabel.trim()}]` }]);
-    setNewVarLabel('');
-    setNewVarKey('');
+    setCustomVariables((prev) => [
+      ...prev,
+      { label: newVarLabel.trim(), tag, sample: `[${newVarLabel.trim()}]` },
+    ]);
+    setNewVarLabel("");
+    setNewVarKey("");
     setShowAddVariable(false);
   };
 
@@ -1059,15 +1306,19 @@ export function Reports() {
   // them exactly as they appear in the editor.
   // ---------------------------------------------------------------------
   const getRenderedPageHTML = () => {
-    if (!currentReport) return '';
-    const rawTextHtml = editorRef.current ? editorRef.current.innerHTML : currentReport.content;
+    if (!currentReport) return "";
+    const rawTextHtml = editorRef.current
+      ? editorRef.current.innerHTML
+      : currentReport.content;
     const textHtml = substituteVariablesInHTML(rawTextHtml, SAMPLE_DATA, true);
 
-    const floatingHtml = (currentReport.floatingElements || []).map((el) => {
-      const raw = renderFloatingContent(el);
-      const substituted = substituteVariablesInHTML(raw, SAMPLE_DATA, true);
-      return `<div style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.width}px;height:${el.height}px;z-index:${el.z};">${substituted}</div>`;
-    }).join('');
+    const floatingHtml = (currentReport.floatingElements || [])
+      .map((el) => {
+        const raw = renderFloatingContent(el);
+        const substituted = substituteVariablesInHTML(raw, SAMPLE_DATA, true);
+        return `<div style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.width}px;height:${el.height}px;z-index:${el.z};">${substituted}</div>`;
+      })
+      .join("");
 
     return `<div style="position:relative;width:${pageSize.width}px;min-height:${pageSize.height}px;">
       <div style="position:relative;z-index:${TEXT_LAYER_Z};padding:40px;box-sizing:border-box;">${textHtml}</div>
@@ -1076,13 +1327,13 @@ export function Reports() {
   };
 
   const handlePrint = () => {
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open("", "_blank");
     printWindow.document.write(`
       <html>
         <head>
-          <title>${currentReport?.title || 'Print Document'}</title>
+          <title>${currentReport?.title || "Print Document"}</title>
           <style>
-            @page { size: ${pageSize.width / 96 * 25.4}mm ${pageSize.height / 96 * 25.4}mm; margin: 0; }
+            @page { size: ${(pageSize.width / 96) * 25.4}mm ${(pageSize.height / 96) * 25.4}mm; margin: 0; }
             body { font-family: Arial, sans-serif; margin: 0; color: #000; }
             table { width: 100%; border-collapse: collapse; }
             th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
@@ -1101,13 +1352,14 @@ export function Reports() {
 
   const filteredGroups = VARIABLE_GROUPS.map((group) => ({
     ...group,
-    vars: group.vars.filter((v) =>
-      v.label.toLowerCase().includes(variableSearch.toLowerCase()) ||
-      v.tag.toLowerCase().includes(variableSearch.toLowerCase())
-    )
+    vars: group.vars.filter(
+      (v) =>
+        v.label.toLowerCase().includes(variableSearch.toLowerCase()) ||
+        v.tag.toLowerCase().includes(variableSearch.toLowerCase()),
+    ),
   })).filter((group) => group.vars.length > 0);
 
-  const tableBlock = ELEMENT_BLOCKS.find((b) => b.label === 'Table');
+  const tableBlock = ELEMENT_BLOCKS.find((b) => b.label === "Table");
 
   return (
     <div className="space-y-6">
@@ -1115,14 +1367,16 @@ export function Reports() {
       <div className="bg-white dark:bg-[#0f172a] p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <FileText className="w-6 h-6 text-blue-500" /> Report & Document Generator
+            <FileText className="w-6 h-6 text-blue-500" /> Report & Document
+            Generator
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Design print-ready templates for tickets, boarding passes, and monthly earning reports.
+            Design print-ready templates for tickets, boarding passes, and
+            monthly earning reports.
           </p>
         </div>
 
-        {activeView === 'list' && (
+        {activeView === "list" && (
           <div className="flex items-center gap-2">
             <input
               ref={importInputRef}
@@ -1154,7 +1408,7 @@ export function Reports() {
           </div>
         )}
 
-        {activeView !== 'list' && (
+        {activeView !== "list" && (
           <div className="flex items-center gap-2 flex-wrap">
             {isDirty && (
               <span className="text-[11px] font-semibold text-amber-600 flex items-center gap-1 mr-1">
@@ -1167,7 +1421,7 @@ export function Reports() {
             >
               Back to List
             </button>
-            {activeView === 'editor' && (
+            {activeView === "editor" && (
               <>
                 <button
                   onClick={goToPreview}
@@ -1183,10 +1437,10 @@ export function Reports() {
                 </button>
               </>
             )}
-            {activeView === 'preview' && (
+            {activeView === "preview" && (
               <>
                 <button
-                  onClick={() => setActiveView('editor')}
+                  onClick={() => setActiveView("editor")}
                   className="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white text-xs font-bold flex items-center gap-1.5"
                 >
                   <Edit3 className="w-3.5 h-3.5" /> Back to Editor
@@ -1204,11 +1458,13 @@ export function Reports() {
       </div>
 
       {/* VIEW 1: TEMPLATE LIST */}
-      {activeView === 'list' && (
-        reports.length === 0 ? (
+      {activeView === "list" &&
+        (reports.length === 0 ? (
           <div className="bg-white dark:bg-[#0f172a] border border-dashed border-slate-300 dark:border-slate-700 p-10 text-center">
             <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-            <p className="text-sm text-slate-500">No report templates yet. Create your first one to get started.</p>
+            <p className="text-sm text-slate-500">
+              No report templates yet. Create your first one to get started.
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1220,7 +1476,7 @@ export function Reports() {
                 <div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="px-2 py-0.5 bg-blue-500/10 text-blue-500 text-[10px] font-bold font-mono">
-                      {rep.paperSize || 'A4'}
+                      {rep.paperSize || "A4"}
                     </span>
                     <div className="flex items-center gap-1">
                       <button
@@ -1269,30 +1525,27 @@ export function Reports() {
               </div>
             ))}
           </div>
-        )
-      )}
+        ))}
 
       {/* VIEW 2: RICH-TEXT + FLOATING-BOX EDITOR */}
-      {activeView === 'editor' && currentReport && (
+      {activeView === "editor" && currentReport && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
           {/* Left Panel: Variables / Elements / Images */}
           <div className="lg:col-span-4 bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col max-h-[750px]">
-
             {/* Tab switcher */}
             <div className="flex border-b border-slate-200 dark:border-slate-800">
               {[
-                { id: 'variables', label: 'Variables', icon: Sparkles },
-                { id: 'elements', label: 'Elements', icon: Table2 },
-                { id: 'images', label: 'Images', icon: ImageIcon },
+                { id: "variables", label: "Variables", icon: Sparkles },
+                { id: "elements", label: "Elements", icon: Table2 },
+                { id: "images", label: "Images", icon: ImageIcon },
               ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setLeftTab(tab.id)}
                   className={`flex-1 px-3 py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 border-b-2 transition-colors ${
                     leftTab === tab.id
-                      ? 'border-blue-500 text-blue-500'
-                      : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                      ? "border-blue-500 text-blue-500"
+                      : "border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                   }`}
                 >
                   <tab.icon className="w-3.5 h-3.5" /> {tab.label}
@@ -1301,13 +1554,15 @@ export function Reports() {
             </div>
 
             <div className="p-4 space-y-4 overflow-y-auto flex-1">
-
               <p className="text-[11px] text-slate-400 bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700 px-2 py-1.5">
-                <strong>Click</strong> to insert into the text where your cursor is. <strong>Drag</strong> onto the page to place a movable box. Select a box on the page to change its color, boldness, or (for tables/signatures/QR/barcode) its settings.
+                <strong>Click</strong> to insert into the text where your cursor
+                is. <strong>Drag</strong> onto the page to place a movable box.
+                Select a box on the page to change its color, boldness, or (for
+                tables/signatures/QR/barcode) its settings.
               </p>
 
               {/* VARIABLES TAB */}
-              {leftTab === 'variables' && (
+              {leftTab === "variables" && (
                 <>
                   <div className="relative">
                     <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2" />
@@ -1331,9 +1586,18 @@ export function Reports() {
                             <div key={v.tag} className="relative group">
                               <button
                                 draggable
-                                onDragStart={(e) => { markDragStarted(); e.dataTransfer.setData('application/x-report-variable', v.tag); e.dataTransfer.setData('text/plain', v.tag); }}
+                                onDragStart={(e) => {
+                                  markDragStarted();
+                                  e.dataTransfer.setData(
+                                    "application/x-report-variable",
+                                    v.tag,
+                                  );
+                                  e.dataTransfer.setData("text/plain", v.tag);
+                                }}
                                 onDragEnd={markDragEnded}
-                                onClick={guardClick(() => insertVariable(v.tag))}
+                                onClick={guardClick(() =>
+                                  insertVariable(v.tag),
+                                )}
                                 className="text-[11px] font-mono bg-slate-100 dark:bg-slate-800 hover:bg-blue-500/10 hover:border-blue-500/40 hover:text-blue-500 border border-slate-200 dark:border-slate-700 px-2 py-1 flex items-center gap-1 cursor-grab active:cursor-grabbing text-slate-700 dark:text-slate-300 transition-colors"
                               >
                                 <GripVertical className="w-3 h-3 text-slate-400 shrink-0" />
@@ -1354,7 +1618,9 @@ export function Reports() {
                       </div>
                     ))}
                     {filteredGroups.length === 0 && (
-                      <p className="text-xs text-slate-400 italic">No variables match "{variableSearch}".</p>
+                      <p className="text-xs text-slate-400 italic">
+                        No variables match "{variableSearch}".
+                      </p>
                     )}
                   </div>
 
@@ -1390,7 +1656,11 @@ export function Reports() {
                             Add
                           </button>
                           <button
-                            onClick={() => { setShowAddVariable(false); setNewVarLabel(''); setNewVarKey(''); }}
+                            onClick={() => {
+                              setShowAddVariable(false);
+                              setNewVarLabel("");
+                              setNewVarKey("");
+                            }}
                             className="flex-1 px-2 py-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-bold"
                           >
                             Cancel
@@ -1403,7 +1673,7 @@ export function Reports() {
               )}
 
               {/* ELEMENTS TAB */}
-              {leftTab === 'elements' && (
+              {leftTab === "elements" && (
                 <>
                   <div className="grid grid-cols-2 gap-2">
                     {ELEMENT_BLOCKS.map((block) => (
@@ -1412,30 +1682,44 @@ export function Reports() {
                         draggable
                         onDragStart={(e) => {
                           markDragStarted();
-                          e.dataTransfer.setData('application/x-report-element', JSON.stringify({
-                            kind: block.kind,
-                            config: block.defaultConfig,
-                            width: block.size.width,
-                            height: block.size.height
-                          }));
+                          e.dataTransfer.setData(
+                            "application/x-report-element",
+                            JSON.stringify({
+                              kind: block.kind,
+                              config: block.defaultConfig,
+                              width: block.size.width,
+                              height: block.size.height,
+                            }),
+                          );
                         }}
                         onDragEnd={markDragEnded}
-                        onClick={guardClick(() => insertHTMLAtCursor(renderFloatingContent({ kind: block.kind, ...block.defaultConfig })))}
+                        onClick={guardClick(() =>
+                          insertHTMLAtCursor(
+                            renderFloatingContent({
+                              kind: block.kind,
+                              ...block.defaultConfig,
+                            }),
+                          ),
+                        )}
                         className="flex flex-col items-center gap-1.5 py-3 px-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-500/40 hover:bg-blue-500/5 text-slate-600 dark:text-slate-300 cursor-grab active:cursor-grabbing transition-colors"
                       >
                         <block.icon className="w-4 h-4" />
-                        <span className="text-[10px] font-semibold text-center">{block.label}</span>
+                        <span className="text-[10px] font-semibold text-center">
+                          {block.label}
+                        </span>
                       </button>
                     ))}
                   </div>
                   <p className="text-[10px] text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
-                    Drag any of these onto the page, then select it there to change its color, weight, size, row/column count, or which variable it displays (for Signature, QR Code, and Barcode).
+                    Drag any of these onto the page, then select it there to
+                    change its color, weight, size, row/column count, or which
+                    variable it displays (for Signature, QR Code, and Barcode).
                   </p>
                 </>
               )}
 
               {/* IMAGES TAB */}
-              {leftTab === 'images' && (
+              {leftTab === "images" && (
                 <>
                   <input
                     ref={logoUploadRef}
@@ -1470,20 +1754,40 @@ export function Reports() {
 
                   <div className="grid grid-cols-3 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
                     {assets.map((asset) => (
-                      <div key={asset.id} className="relative group aspect-square">
+                      <div
+                        key={asset.id}
+                        className="relative group aspect-square"
+                      >
                         <div
                           draggable
-                          onDragStart={(e) => { markDragStarted(); e.dataTransfer.setData('application/x-report-image', asset.dataUrl); }}
+                          onDragStart={(e) => {
+                            markDragStarted();
+                            e.dataTransfer.setData(
+                              "application/x-report-image",
+                              asset.dataUrl,
+                            );
+                          }}
                           onDragEnd={markDragEnded}
-                          onClick={guardClick(() => insertHTMLAtCursor(`<img src="${asset.dataUrl}" style="max-width:220px;" alt="${asset.name}" />`))}
+                          onClick={guardClick(() =>
+                            insertHTMLAtCursor(
+                              `<img src="${asset.dataUrl}" style="max-width:220px;" alt="${asset.name}" />`,
+                            ),
+                          )}
                           className="w-full h-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-500/40 flex items-center justify-center p-1.5 cursor-grab active:cursor-grabbing overflow-hidden"
                           title={asset.name}
                         >
-                          <img src={asset.dataUrl} alt={asset.name} className="max-w-full max-h-full object-contain pointer-events-none" />
+                          <img
+                            src={asset.dataUrl}
+                            alt={asset.name}
+                            className="max-w-full max-h-full object-contain pointer-events-none"
+                          />
                         </div>
                         <button
                           onMouseDown={(e) => e.stopPropagation()}
-                          onClick={(e) => { e.stopPropagation(); removeAsset(asset.id); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeAsset(asset.id);
+                          }}
                           className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 hover:bg-red-600 text-white items-center justify-center hidden group-hover:flex z-10"
                           title="Delete image"
                         >
@@ -1499,59 +1803,99 @@ export function Reports() {
 
           {/* Right Panel: Canvas */}
           <div className="lg:col-span-8 space-y-3">
-
             {/* Top Toolbar */}
             <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-2 shadow-sm flex flex-wrap items-center gap-2">
-
               {/* Document Title */}
               <input
                 type="text"
                 value={currentReport.title}
-                onChange={(e) => setCurrentReport({ ...currentReport, title: e.target.value })}
+                onChange={(e) =>
+                  setCurrentReport({ ...currentReport, title: e.target.value })
+                }
                 placeholder="Template Title..."
                 className="px-2 py-1 text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white mr-2 flex-1 min-w-[160px]"
               />
 
               {/* Undo / Redo */}
               <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
-                <button onClick={() => executeCommand('undo')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200" title="Undo">
+                <button
+                  onClick={() => executeCommand("undo")}
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  title="Undo"
+                >
                   <Undo2 className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => executeCommand('redo')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200" title="Redo">
+                <button
+                  onClick={() => executeCommand("redo")}
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  title="Redo"
+                >
                   <Redo2 className="w-3.5 h-3.5" />
                 </button>
               </div>
 
               {/* Formatting Actions */}
               <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
-                <button onClick={() => executeCommand('bold')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200" title="Bold">
+                <button
+                  onClick={() => executeCommand("bold")}
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  title="Bold"
+                >
                   <Bold className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => executeCommand('italic')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200" title="Italic">
+                <button
+                  onClick={() => executeCommand("italic")}
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  title="Italic"
+                >
                   <Italic className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => executeCommand('underline')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200" title="Underline">
+                <button
+                  onClick={() => executeCommand("underline")}
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  title="Underline"
+                >
                   <Underline className="w-3.5 h-3.5" />
                 </button>
               </div>
 
               <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
-                <button onClick={() => executeCommand('justifyLeft')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200" title="Align left">
+                <button
+                  onClick={() => executeCommand("justifyLeft")}
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  title="Align left"
+                >
                   <AlignLeft className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => executeCommand('justifyCenter')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200" title="Align center">
+                <button
+                  onClick={() => executeCommand("justifyCenter")}
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  title="Align center"
+                >
                   <AlignCenter className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => executeCommand('justifyRight')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200" title="Align right">
+                <button
+                  onClick={() => executeCommand("justifyRight")}
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  title="Align right"
+                >
                   <AlignRight className="w-3.5 h-3.5" />
                 </button>
               </div>
 
               <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
-                <button onClick={() => executeCommand('insertUnorderedList')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200" title="Bullet list">
+                <button
+                  onClick={() => executeCommand("insertUnorderedList")}
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  title="Bullet list"
+                >
                   <List className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => executeCommand('insertOrderedList')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200" title="Numbered list">
+                <button
+                  onClick={() => executeCommand("insertOrderedList")}
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  title="Numbered list"
+                >
                   <ListOrdered className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -1560,12 +1904,14 @@ export function Reports() {
               <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
                 <Type className="w-3.5 h-3.5 text-slate-400" />
                 <select
-                  onChange={(e) => executeCommand('fontName', e.target.value)}
+                  onChange={(e) => executeCommand("fontName", e.target.value)}
                   defaultValue=""
                   className="text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-1.5 py-1 text-slate-900 dark:text-white"
                   title="Font family"
                 >
-                  <option value="" disabled>Font</option>
+                  <option value="" disabled>
+                    Font
+                  </option>
                   <option value="Arial">Arial</option>
                   <option value="Georgia">Georgia</option>
                   <option value="'Times New Roman'">Times New Roman</option>
@@ -1578,7 +1924,12 @@ export function Reports() {
                   max={144}
                   value={fontSizeInput}
                   onChange={(e) => setFontSizeInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { applyFontSize(fontSizeInput); e.currentTarget.blur(); } }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      applyFontSize(fontSizeInput);
+                      e.currentTarget.blur();
+                    }
+                  }}
                   onBlur={() => applyFontSize(fontSizeInput)}
                   className="w-14 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-1.5 py-1 text-slate-900 dark:text-white"
                   title="Font size in px - select text first, then Enter to apply"
@@ -1588,19 +1939,29 @@ export function Reports() {
 
               {/* Colors */}
               <div className="flex items-center gap-1.5 border-l border-slate-200 dark:border-slate-700 pl-2">
-                <label className="flex items-center gap-1 cursor-pointer" title="Text color">
+                <label
+                  className="flex items-center gap-1 cursor-pointer"
+                  title="Text color"
+                >
                   <Palette className="w-3.5 h-3.5 text-slate-400" />
                   <input
                     type="color"
-                    onChange={(e) => executeCommand('foreColor', e.target.value)}
+                    onChange={(e) =>
+                      executeCommand("foreColor", e.target.value)
+                    }
                     className="w-5 h-5 border-0 p-0 bg-transparent cursor-pointer"
                   />
                 </label>
-                <label className="flex items-center gap-1 cursor-pointer" title="Highlight color">
+                <label
+                  className="flex items-center gap-1 cursor-pointer"
+                  title="Highlight color"
+                >
                   <input
                     type="color"
                     defaultValue="#fff59d"
-                    onChange={(e) => executeCommand('hiliteColor', e.target.value)}
+                    onChange={(e) =>
+                      executeCommand("hiliteColor", e.target.value)
+                    }
                     className="w-5 h-5 border-0 p-0 bg-transparent cursor-pointer"
                   />
                 </label>
@@ -1609,7 +1970,14 @@ export function Reports() {
               {/* Quick insert table */}
               <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
                 <button
-                  onClick={() => insertHTMLAtCursor(renderFloatingContent({ kind: 'table', ...tableBlock.defaultConfig }))}
+                  onClick={() =>
+                    insertHTMLAtCursor(
+                      renderFloatingContent({
+                        kind: "table",
+                        ...tableBlock.defaultConfig,
+                      }),
+                    )
+                  }
                   className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
                   title="Insert table"
                 >
@@ -1619,11 +1987,21 @@ export function Reports() {
 
               {/* Zoom */}
               <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
-                <button onClick={() => setZoom((z) => Math.max(50, z - 10))} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200" title="Zoom out">
+                <button
+                  onClick={() => setZoom((z) => Math.max(50, z - 10))}
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  title="Zoom out"
+                >
                   <ZoomOut className="w-3.5 h-3.5" />
                 </button>
-                <span className="text-[11px] font-mono text-slate-500 w-9 text-center">{zoom}%</span>
-                <button onClick={() => setZoom((z) => Math.min(150, z + 10))} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200" title="Zoom in">
+                <span className="text-[11px] font-mono text-slate-500 w-9 text-center">
+                  {zoom}%
+                </span>
+                <button
+                  onClick={() => setZoom((z) => Math.min(150, z + 10))}
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  title="Zoom in"
+                >
                   <ZoomIn className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -1643,13 +2021,14 @@ export function Reports() {
                   <option value="Custom">Custom Size...</option>
                 </select>
               </div>
-
             </div>
 
             {/* Custom Dimension Inputs */}
-            {paperSize === 'Custom' && (
+            {paperSize === "Custom" && (
               <div className="bg-slate-100 dark:bg-slate-800/80 p-2 border border-slate-200 dark:border-slate-700 flex items-center gap-3 text-xs">
-                <span className="font-bold text-slate-500">Custom Dimensions:</span>
+                <span className="font-bold text-slate-500">
+                  Custom Dimensions:
+                </span>
                 <input
                   type="number"
                   value={customWidth}
@@ -1678,8 +2057,17 @@ export function Reports() {
             )}
 
             {/* Document Page Canvas */}
-            <div className="bg-slate-200 dark:bg-slate-900 p-8 flex justify-center overflow-auto" style={{ minHeight: 600 }}>
-              <div style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center', transition: 'transform 0.15s ease' }}>
+            <div
+              className="bg-slate-200 dark:bg-slate-900 p-8 flex justify-center overflow-auto"
+              style={{ minHeight: 600 }}
+            >
+              <div
+                style={{
+                  transform: `scale(${zoom / 100})`,
+                  transformOrigin: "top center",
+                  transition: "transform 0.15s ease",
+                }}
+              >
                 {/* The page itself: a genuinely fixed pixel size that never
                     shrinks or grows based on content. */}
                 <div
@@ -1695,7 +2083,9 @@ export function Reports() {
                     ref={editorRef}
                     contentEditable
                     suppressContentEditableWarning
-                    onFocus={() => { activeEditableRef.current = editorRef.current; }}
+                    onFocus={() => {
+                      activeEditableRef.current = editorRef.current;
+                    }}
                     onInput={() => setIsDirty(true)}
                     className="absolute inset-0 p-10 outline-none focus:ring-2 focus:ring-blue-500 overflow-auto text-slate-900"
                     style={{ zIndex: TEXT_LAYER_Z }}
@@ -1713,28 +2103,37 @@ export function Reports() {
                       onBringFront={() => bringToFront(el.id)}
                       onSendBack={() => sendToBack(el.id)}
                       onToggleBehindText={() => toggleBehindText(el.id)}
-                      onFocusEditable={(node) => { activeEditableRef.current = node; }}
+                      onFocusEditable={(node) => {
+                        activeEditableRef.current = node;
+                      }}
                     />
                   ))}
                 </div>
               </div>
             </div>
             <p className="text-[11px] text-slate-400 text-center">
-              If typed content exceeds the page height it'll scroll inside the page rather than resize it - insert a Page Break element for multi-page documents.
+              If typed content exceeds the page height it'll scroll inside the
+              page rather than resize it - insert a Page Break element for
+              multi-page documents.
             </p>
-
           </div>
-
         </div>
       )}
 
       {/* VIEW 3: LIVE PREVIEW WITH MOCK DATA */}
-      {activeView === 'preview' && (
+      {activeView === "preview" && (
         <div className="bg-slate-200 dark:bg-slate-900 p-8 flex justify-center overflow-auto">
-          <div className="bg-white shadow-2xl border border-slate-300" style={{ width: pageSize.width }}>
+          <div
+            className="bg-white shadow-2xl border border-slate-300"
+            style={{ width: pageSize.width }}
+          >
             <div className="px-6 pt-4 pb-2 border-b border-slate-200 text-xs text-slate-400 font-mono flex items-center justify-between">
-              <span>PREVIEW MODE - Variables replaced with mock sample data</span>
-              <span className="text-emerald-600 font-bold">Ready for Print</span>
+              <span>
+                PREVIEW MODE - Variables replaced with mock sample data
+              </span>
+              <span className="text-emerald-600 font-bold">
+                Ready for Print
+              </span>
             </div>
             <div
               dangerouslySetInnerHTML={{ __html: getRenderedPageHTML() }}
@@ -1743,7 +2142,6 @@ export function Reports() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
