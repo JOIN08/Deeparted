@@ -1,16 +1,37 @@
-# React + Vite
+# Philippine Shipping Hub
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+LAN-based shipping operations dashboard prototype.
 
-Currently, two official plugins are available:
+## Current stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React 19 and Vite
+- TypeScript for the application entry points and shared data contracts
+- Tailwind CSS
+- ESLint
 
-## React Compiler
+The remaining feature screens are still JavaScript/JSX so the migration can happen incrementally without interrupting UI work.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Development
 
-## Expanding the ESLint configuration
+```bash
+npm install
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Validation commands:
+
+```bash
+npm run typecheck
+npm run lint
+npm run build
+```
+
+## Planned deployment
+
+The production target is one server computer on the port's LAN. Users will access the web client through that server. The database will run directly on the host hardware and will not be placed inside a Docker container.
+
+Docker can later package the web/API services while the database remains an externally managed host service. The frontend must not connect directly to the database; a server-side API will provide authentication, authorization, validation, and synchronization between ports.
+
+## GitHub hygiene
+
+Do not commit passwords, database credentials, private keys, `.env` files, `node_modules`, or `dist`. Local environment files are ignored; commit a sanitized `.env.example` when API configuration is introduced.

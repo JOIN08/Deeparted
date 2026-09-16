@@ -1,7 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Box, Wrench, BedDouble, Navigation, Save, Trash2, Plus, Move, Layers, X, CheckCircle2, RotateCw, Eye, EyeOff, Layers3, Package, SlidersHorizontal } from 'lucide-react';
+import { BUNK_CONFIGURATION_STORAGE_KEY, PASSENGER_BUNK_AREAS, SHIP_PLAN_STORAGE_KEY } from '../data/mockData';
 
 const GRID_SIZE = 20; // 20px grid unit
+const getSavedBunkBeds = () => {
+  try {
+    const savedAreas = window.localStorage.getItem(BUNK_CONFIGURATION_STORAGE_KEY);
+    const savedArea = savedAreas ? JSON.parse(savedAreas)[0] : null;
+    return savedArea?.beds || PASSENGER_BUNK_AREAS[0].beds.map((bed) => ({ ...bed }));
+  } catch {
+    return PASSENGER_BUNK_AREAS[0].beds.map((bed) => ({ ...bed }));
+  }
+};
 
 export function ShipBuilder() {
   const [vesselName, setVesselName] = useState('MV Trans-Asia 12');
@@ -11,6 +21,7 @@ export function ShipBuilder() {
     { id: 'deck-1', name: 'Deck 1 (Lower Hull)' },
     { id: 'deck-2', name: 'Deck 2 (Tourist Class)' },
   ]);
+  const [isPlanLoaded, setIsPlanLoaded] = useState(false);
   const [activeFloorId, setActiveFloorId] = useState('deck-2');
 
   // Macro Deck Compartments
@@ -31,10 +42,7 @@ export function ShipBuilder() {
       label: 'Tourist Sec A', 
       x: 260, y: 100, width: 140, height: 100, 
       color: 'bg-indigo-500/20 border-indigo-500 text-indigo-400',
-      beds: [
-        { id: 'b1', label: 'T-01', level: 'Lower', x: 20, y: 20, isVertical: false, status: 'Available' },
-        { id: 'b2', label: 'T-01', level: 'Top', x: 20, y: 80, isVertical: false, status: 'Available' },
-      ]
+      beds: getSavedBunkBeds()
     },
     { 
       id: '3', 
@@ -85,7 +93,44 @@ export function ShipBuilder() {
   const [newCargoWeight, setNewCargoWeight] = useState('');
   const [newCargoQty, setNewCargoQty] = useState(1);
 
+  useEffect(() => {
+    const restorePlan = window.setTimeout(() => {
+      try {
+        const savedPlan = window.localStorage.getItem(SHIP_PLAN_STORAGE_KEY);
+        if (savedPlan) {
+          const parsedPlan = JSON.parse(savedPlan);
+          if (Array.isArray(parsedPlan.floors)) setFloors(parsedPlan.floors);
+          if (Array.isArray(parsedPlan.zones)) setZones(parsedPlan.zones);
+        }
+      } catch {
+        // Keep the default deck plan when saved data is unavailable or invalid.
+      }
+      setIsPlanLoaded(true);
+    }, 0);
+    return () => window.clearTimeout(restorePlan);
+  }, []);
+
+  useEffect(() => {
+    if (!isPlanLoaded) return;
+    window.localStorage.setItem(SHIP_PLAN_STORAGE_KEY, JSON.stringify({ vesselName, floors, zones }));
+  }, [isPlanLoaded, vesselName, floors, zones]);
+
+  useEffect(() => {
+    const bunkAreas = zones.filter((zone) => zone.type === 'Passenger Bunk Area').map((zone) => ({
+      id: zone.id,
+      label: zone.label,
+      accommodation: zone.label.replace(/\s+Sec.*$/i, '').trim() || 'Tourist',
+      beds: zone.beds || [],
+    }));
+    window.localStorage.setItem(BUNK_CONFIGURATION_STORAGE_KEY, JSON.stringify(bunkAreas));
+    window.dispatchEvent(new Event('passenger-bunks-updated'));
+  }, [zones]);
+
   const snapToGrid = (val) => Math.round(val / GRID_SIZE) * GRID_SIZE;
+  const saveDeckPlan = () => {
+    window.localStorage.setItem(SHIP_PLAN_STORAGE_KEY, JSON.stringify({ vesselName, floors, zones }));
+    alert('Saved multi-deck setup!');
+  };
 
   // Deck Controls
   const addFloor = () => {
@@ -364,7 +409,7 @@ export function ShipBuilder() {
             className="px-3 py-2 text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
           />
           <button
-            onClick={() => alert(`Saved multi-deck setup!`)}
+            onClick={saveDeckPlan}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-2 shadow-md shadow-blue-600/20"
           >
             <Save className="w-4 h-4" /> Save Deck Plan
@@ -372,38 +417,36 @@ export function ShipBuilder() {
         </div>
       </div>
 
-      {/* Vessel Floor / Deck Selector Bar (X Button Moved INSIDE the Pill) */}
-      <div className="bg-white dark:bg-[#0f172a] p-3 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between gap-3 overflow-x-auto">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5 px-2">
-            <Layers3 className="w-4 h-4 text-blue-500" /> Active Floor:
-          </span>
-          {floors.map(floor => (
-            <button
-              key={floor.id}
-              onClick={() => {
-                setActiveFloorId(floor.id);
-                setSelectedZoneId(null);
-              }}
-              className={`px-4 py-2 text-xs font-bold transition-all flex items-center gap-2 ${
-                activeFloorId === floor.id
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
+{/* Vessel Floor / Deck Selector Bar */}
+<div className="bg-white p-3 border border-slate-200 shadow-sm flex items-center justify-between gap-3 overflow-x-auto">
+  <div className="flex items-center gap-2">
+    <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5 px-2">
+      <Layers3 className="w-4 h-4 text-teal-500" /> Active Floor:
+    </span>
+    {floors.map(floor => (
+      <button
+        key={floor.id}
+        onClick={() => {
+          setActiveFloorId(floor.id);
+          setSelectedZoneId(null);
+        }}
+        className={`px-4 py-2 text-xs font-bold transition-all flex items-center gap-2 rounded ${
+          activeFloorId === floor.id
+            ? 'bg-teal-300 text-teal-950 shadow-md dark:bg-teal-700 dark:text-teal-50'
+            : 'bg-teal-100 text-teal-700 hover:bg-teal-200 dark:bg-teal-900 dark:text-teal-100 dark:hover:bg-teal-800'
+        }`}
+      >
               <span>{floor.name}</span>
-              <span className="text-[10px] opacity-75">
-                ({zones.filter(z => z.floorId === floor.id).length})
-              </span>
               {/* Internal Delete Button to Prevent Row Shifting */}
-              {floors.length > 1 && activeFloorId === floor.id && (
+              
+              {floors.length > 1 && (
                 <span
                   onClick={(e) => {
                     e.stopPropagation();
                     removeFloor(floor.id);
                   }}
                   title="Delete floor"
-                  className="p-0.5 hover:bg-white/20 rounded transition-colors text-white/80 hover:text-white ml-1"
+                  className="p-0.5 hover:bg-teal-600 rounded transition-colors text-white/80 hover:text-white ml-1"
                 >
                   <X className="w-3.5 h-3.5" />
                 </span>
@@ -422,9 +465,7 @@ export function ShipBuilder() {
       {/* TOP: Boat Deck Canvas Grid */}
       <div className="bg-white dark:bg-[#0f172a] p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center min-h-[460px]">
         <div className="w-full flex items-center justify-between mb-4">
-          <span className="text-xs font-semibold text-slate-400 flex items-center gap-1"><Move className="w-3.5 h-3.5" /> Stern (Aft)</span>
-          <span className="text-xs font-bold text-blue-500 uppercase tracking-widest">{floors.find(f => f.id === activeFloorId)?.name} Grid</span>
-          <span className="text-xs font-semibold text-slate-400">Bow (Forward) →</span>
+          <span className="w-full text-center text-xs font-bold text-blue-500 uppercase tracking-widest">{floors.find(f => f.id === activeFloorId)?.name} Grid</span>
         </div>
 
         {/* Larger Boat-Shaped Hull Frame */}

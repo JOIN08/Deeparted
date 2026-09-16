@@ -5,9 +5,6 @@ export default function Header({ timeLeft, isDarkMode, setIsDarkMode, handleLogo
   return (
     <header className="h-16 border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#0f172a] px-8 flex items-center justify-between sticky top-0 z-10">
       <div className="flex items-center gap-4">
-        <button className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
-          <Search className="w-5 h-5" />
-        </button>
         <span className="text-xs font-medium text-slate-400">System Dashboard / Overview</span>
       </div>
 

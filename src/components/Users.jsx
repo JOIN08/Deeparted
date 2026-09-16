@@ -1,7 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { UserPlus, Trash2, Edit3, Key, Shield, UserCheck, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { UserPlus, Trash2, Shield, UserCheck, X } from 'lucide-react';
 
 const STORAGE_KEY = 'user_management_users_v1';
+
+const ACCESS_OPTIONS = [
+  { name: 'Vessels', description: 'Create and manage vessels.' },
+  { name: 'Ports Manager', description: 'Manage ports and port details.' },
+  { name: 'Routes', description: 'Create and manage shipping routes.' },
+  { name: 'Reports', description: 'View operational reports.' },
+  { name: 'Users', description: 'Create and manage user accounts.' },
+];
+
+const DEFAULT_ACCESS = ACCESS_OPTIONS.reduce((access, option) => ({
+  ...access,
+  [option.name]: Boolean(option.required)
+}), {});
 
 function loadFromStorage(fallback) {
   try {
@@ -29,14 +42,6 @@ const DEFAULT_USERS = [
     jobTitle: 'System Administrator',
     createdAt: '2026-01-15'
   },
-  {
-    id: 'usr-2',
-    firstName: 'John',
-    lastName: 'Cena',
-    username: 'JCENA',
-    jobTitle: 'Operations Manager',
-    createdAt: '2026-02-01'
-  }
 ];
 
 export function Users() {
@@ -50,7 +55,8 @@ export function Users() {
     lastName: '',
     username: '',
     jobTitle: '',
-    password: ''
+    password: '',
+    access: DEFAULT_ACCESS
   });
 
   useEffect(() => {
@@ -110,7 +116,8 @@ export function Users() {
       lastName: '',
       username: '',
       jobTitle: '',
-      password: ''
+      password: '',
+      access: DEFAULT_ACCESS
     });
     setIsManualUsername(false);
     setIsModalOpen(true);
@@ -129,11 +136,19 @@ export function Users() {
       lastName: formData.lastName.trim(),
       username: formData.username.trim(),
       jobTitle: formData.jobTitle.trim() || 'Staff',
+      access: formData.access,
       createdAt: new Date().toISOString().split('T')[0]
     };
 
     setUsers((prev) => [newUser, ...prev]);
     setIsModalOpen(false);
+  };
+
+  const handleAccessChange = (name) => {
+    setFormData((prev) => ({
+      ...prev,
+      access: { ...prev.access, [name]: !prev.access[name] }
+    }));
   };
 
   const handleDeleteUser = (id) => {
@@ -304,6 +319,39 @@ export function Users() {
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="w-full px-3 py-2 border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 focus:outline-none focus:border-black dark:focus:border-white"
                 />
+              </div>
+
+              {/* Access Permissions */}
+              <div className="border-t border-neutral-200 dark:border-neutral-800 pt-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="font-bold text-neutral-600 dark:text-neutral-400 flex items-center gap-1.5">
+                      <Shield className="w-3.5 h-3.5" /> Account Access
+                    </label>
+                    <p className="text-[10px] text-neutral-400 mt-0.5">Dashboard and Settings are included for every account.</p>
+                  </div>
+                  <span className="text-[10px] text-neutral-400 font-mono">{Object.values(formData.access).filter(Boolean).length}/{ACCESS_OPTIONS.length}</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {ACCESS_OPTIONS.map((option) => (
+                    <label
+                      key={option.name}
+                      className={`flex items-start gap-2 p-2 border border-neutral-200 dark:border-neutral-800 ${option.required ? 'bg-neutral-100 dark:bg-neutral-900' : 'bg-neutral-50 dark:bg-neutral-900/50'} cursor-pointer`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.access[option.name]}
+                        disabled={option.required}
+                        onChange={() => handleAccessChange(option.name)}
+                        className="mt-0.5 accent-black dark:accent-white"
+                      />
+                      <span className="min-w-0">
+                        <span className="block font-bold text-neutral-700 dark:text-neutral-200">{option.name}{option.required && <span className="ml-1 text-[9px] text-neutral-400">DEFAULT</span>}</span>
+                        <span className="block text-[10px] leading-tight text-neutral-400">{option.description}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
               </div>
 
               {/* Form Buttons */}
