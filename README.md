@@ -1,6 +1,6 @@
 # Deeparted 🌊
 
-A local-first shipping operations platform built to survive network death. 
+A local-first shipping operations platform.
 *(Named because the ocean is deep, and I'm emo enough to want to depart from this world—mostly a joke, dudes, depending on how much this sprint is dragging).*
 
 ## 🛠️ Tech Stack
@@ -10,24 +10,6 @@ A local-first shipping operations platform built to survive network death.
 * **Code Quality:** TypeScript (for app entry points and shared data contracts), ESLint
 
 > 💡 **Note:** The remaining feature screens are still JavaScript/JSX. We are migrating to TypeScript incrementally so UI work doesn't grind to a total halt.
-
----
-
-## 🚀 Development
-
-### 1. Setup & Local Dev
-```bash
-npm install
-npm run dev
-```
-
-### 2. Validation & Linting
-Run these before pushing code to keep the repo clean, dudes:
-```bash
-npm run typecheck    # Run TypeScript checks
-npm run lint         # Run ESLint
-npm run build        # Test the production build
-```
 
 ---
 
@@ -43,12 +25,5 @@ Alright dudes, this thing is being built to be totally resilient. The ultimate g
 
 ---
 
-## 🔒 Repo Hygiene
-
-Keep the repo clean, dudes. **Do not commit:**
-* Passwords or database credentials
-* Private keys
-* `.env` files
-* `node_modules` or `dist` folders
-
-Local environment files are currently ignored. If you introduce new API configurations, commit a sanitized `.env.example` file instead.
+Sorry for the slow updates. Although I use AI I use it as an assist cause it's hard to maintain if it's completely written by AI. Aight. See ya dudes.
+Just email me if you want additional features.
