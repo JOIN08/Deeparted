@@ -1,23 +1,14 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Navigation, Plus, Search, Trash2, ArrowRight } from 'lucide-react';
-import { MOCK_ROUTES } from '../data/mockData';
+import { loadPorts, loadRoutes, saveRoutes } from '../data/operationsData';
 
-export function Routes({ ports = [] }) {
+export function Routes({ ports = [], canEdit = false }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [error, setError] = useState('');
 
-  // Default Mock Recorded Ports if not passed via props
-  const defaultPorts = [
-    { id: 'port-1', name: 'Port of Manila (South Harbor)', code: 'PH MNL' },
-    { id: 'port-2', name: 'Cebu International Port', code: 'PH CEB' },
-    { id: 'port-3', name: 'Batangas Port', code: 'PH BTG' },
-    { id: 'port-4', name: 'Davao Port Terminal', code: 'PH DVO' },
-  ];
-
-  const availablePorts = ports.length > 0 ? ports : defaultPorts;
-
-  // Saved Routes State using MOCK_ROUTES from mockData.js
-  const [routesList, setRoutesList] = useState(MOCK_ROUTES);
+  const availablePorts = ports?.length ? ports : loadPorts();
+  const [routesList, setRoutesList] = useState(loadRoutes);
 
   // Simplified Form State
   const [newRoute, setNewRoute] = useState({
@@ -26,8 +17,22 @@ export function Routes({ ports = [] }) {
     destinationId: ''
   });
 
+  const commitRoutes = (updatedRoutes) => {
+    try {
+      saveRoutes(updatedRoutes);
+      setRoutesList(updatedRoutes);
+      setError('');
+      return true;
+    } catch (saveError) {
+      console.error('Unable to save route records.', saveError);
+      setError('Could not save route changes. Check browser storage settings.');
+      return false;
+    }
+  };
+
   const handleAddRoute = (e) => {
     e.preventDefault();
+    if (!canEdit) return;
 
     if (!newRoute.name || !newRoute.originId || !newRoute.destinationId) {
       return alert('Please enter a route name and select both Origin and Destination.');
@@ -39,6 +44,10 @@ export function Routes({ ports = [] }) {
 
     const originPort = availablePorts.find(p => p.id === newRoute.originId);
     const destPort = availablePorts.find(p => p.id === newRoute.destinationId);
+    if (!originPort || !destPort) {
+      setError('Choose valid origin and destination ports.');
+      return;
+    }
 
     const createdRoute = {
       id: `route-${Date.now()}`,
@@ -50,14 +59,16 @@ export function Routes({ ports = [] }) {
       status: 'Active'
     };
 
-    setRoutesList([createdRoute, ...routesList]);
-    setIsModalOpen(false);
-    setNewRoute({ name: '', originId: '', destinationId: '' });
+    if (commitRoutes([createdRoute, ...routesList])) {
+      setIsModalOpen(false);
+      setNewRoute({ name: '', originId: '', destinationId: '' });
+    }
   };
 
   const removeRoute = (id) => {
+    if (!canEdit) return;
     if (confirm('Delete this route?')) {
-      setRoutesList(routesList.filter(r => r.id !== id));
+      commitRoutes(routesList.filter(r => r.id !== id));
     }
   };
 
@@ -70,26 +81,30 @@ export function Routes({ ports = [] }) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white dark:bg-[#0f172a] p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between gap-4">
+      <div className="bg-white dark:bg-github-panel p-6 border border-slate-200 dark:border-github-border shadow-sm flex items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Navigation className="w-6 h-6 text-blue-500" /> Maritime Routes
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Create connections between your registered ports and terminals.
+          <p className="text-xs text-slate-500 dark:text-github-muted mt-1">
+            {canEdit
+              ? "Create connections between your registered ports and terminals."
+              : "View connections between registered ports and terminals."}
           </p>
         </div>
 
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-blue-600/20"
-        >
-          <Plus className="w-4 h-4" /> Create Route
-        </button>
+        {canEdit && (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-blue-600/20"
+          >
+            <Plus className="w-4 h-4" /> Create Route
+          </button>
+        )}
       </div>
 
       {/* Search Bar */}
-      <div className="bg-white dark:bg-[#0f172a] p-4 border border-slate-200 dark:border-slate-800 shadow-sm">
+      <div className="bg-white dark:bg-github-panel p-4 border border-slate-200 dark:border-github-border shadow-sm">
         <div className="relative w-full max-w-md">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -97,9 +112,14 @@ export function Routes({ ports = [] }) {
             placeholder="Search route name or port..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+            className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
           />
         </div>
+        {error && (
+          <p role="alert" className="border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+            {error}
+          </p>
+        )}
       </div>
 
       {/* Routes Grid */}
@@ -107,10 +127,10 @@ export function Routes({ ports = [] }) {
         {filteredRoutes.map((route) => (
           <div
             key={route.id}
-            className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4"
+            className="bg-white dark:bg-github-panel border border-slate-200 dark:border-github-border p-5 shadow-sm space-y-4"
           >
             {/* Title & Status */}
-            <div className="flex items-start justify-between gap-2 border-b border-slate-100 dark:border-slate-800/80 pb-3">
+            <div className="flex items-start justify-between gap-2 border-b border-slate-100 dark:border-github-border/80 pb-3">
               <h3 className="font-bold text-sm text-slate-900 dark:text-white">
                 {route.name}
               </h3>
@@ -120,7 +140,7 @@ export function Routes({ ports = [] }) {
             </div>
 
             {/* Origin -> Destination Visualizer */}
-            <div className="flex items-center justify-between gap-2 bg-slate-50 dark:bg-slate-800/50 p-3 border border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between gap-2 bg-slate-50 dark:bg-github-panel/50 p-3 border border-slate-100 dark:border-github-border">
               {/* Origin */}
               <div className="space-y-0.5">
                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
@@ -151,24 +171,26 @@ export function Routes({ ports = [] }) {
             </div>
 
             {/* Footer Action */}
-            <div className="flex justify-end pt-1">
-              <button
-                onClick={() => removeRoute(route.id)}
-                className="text-red-500 hover:text-red-600 font-semibold flex items-center gap-1 text-[11px]"
-              >
-                <Trash2 className="w-3.5 h-3.5" /> Delete Route
-              </button>
-            </div>
+            {canEdit && (
+              <div className="flex justify-end pt-1">
+                <button
+                  onClick={() => removeRoute(route.id)}
+                  className="text-red-500 hover:text-red-600 font-semibold flex items-center gap-1 text-[11px]"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Delete Route
+                </button>
+              </div>
+            )}
           </div>
         ))}
       </div>
 
       {/* Add Route Modal */}
-      {isModalOpen && (
+      {canEdit && isModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md p-5 space-y-4">
+          <div className="bg-white dark:bg-github-panel border border-slate-200 dark:border-github-border shadow-2xl w-full max-w-md p-5 space-y-4">
             
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-github-border pb-2">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Navigation className="w-4 h-4 text-blue-500" /> Create Route
               </h3>
@@ -188,7 +210,7 @@ export function Routes({ ports = [] }) {
                   placeholder="e.g. Manila - Cebu Express"
                   value={newRoute.name}
                   onChange={(e) => setNewRoute({ ...newRoute, name: e.target.value })}
-                  className="w-full px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-1.5 text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
                 />
               </div>
 
@@ -201,7 +223,7 @@ export function Routes({ ports = [] }) {
                   required
                   value={newRoute.originId}
                   onChange={(e) => setNewRoute({ ...newRoute, originId: e.target.value })}
-                  className="w-full px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-1.5 text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
                 >
                   <option value="">-- Choose Origin --</option>
                   {availablePorts.map((port) => (
@@ -221,7 +243,7 @@ export function Routes({ ports = [] }) {
                   required
                   value={newRoute.destinationId}
                   onChange={(e) => setNewRoute({ ...newRoute, destinationId: e.target.value })}
-                  className="w-full px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-1.5 text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
                 >
                   <option value="">-- Choose Destination --</option>
                   {availablePorts.map((port) => (
@@ -232,11 +254,11 @@ export function Routes({ ports = [] }) {
                 </select>
               </div>
 
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2">
+              <div className="pt-3 border-t border-slate-200 dark:border-github-border flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold"
+                  className="px-3 py-1.5 bg-slate-100 dark:bg-github-panel text-slate-700 dark:text-github-text text-xs font-bold"
                 >
                   Cancel
                 </button>

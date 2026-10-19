@@ -14,7 +14,7 @@ export const PASSENGER_TICKET_REPORT: PassengerTicketReport = {
   content: `
     <div style="font-family: Arial, sans-serif; color: #17232b; border: 2px solid #123044; padding: 24px; max-width: 680px; margin: 0 auto;">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #168a8a; padding-bottom:16px; margin-bottom:18px;">
-        <div><p style="margin:0; font-size:11px; letter-spacing:2px; color:#168a8a; font-weight:bold;">PHILIPPINE SHIPPING HUB</p><h1 style="margin:6px 0 0; font-size:26px; color:#123044;">BOARDING PASS</h1></div>
+        <div><p style="margin:0; font-size:11px; letter-spacing:2px; color:#168a8a; font-weight:bold;">DEEPARTED</p><h1 style="margin:6px 0 0; font-size:26px; color:#123044;">BOARDING PASS</h1></div>
         <div style="text-align:right;"><p style="margin:0; font-size:10px; color:#687780;">BOOKING REFERENCE</p><strong style="font-size:18px;">{{booking_reference}}</strong></div>
       </div>
       <p style="margin:0 0 16px; font-size:12px; color:#687780;">Review copy - ticket is issued after payment confirmation.</p>

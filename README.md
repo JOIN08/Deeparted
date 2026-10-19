@@ -1,4 +1,4 @@
-# Philippine Shipping Hub
+# Deeparted
 
 LAN-based shipping operations dashboard prototype.
 
@@ -6,32 +6,24 @@ LAN-based shipping operations dashboard prototype.
 
 - React 19 and Vite
 - TypeScript for the application entry points and shared data contracts
+- Node.js/Express API with PostgreSQL sessions and account storage
 - Tailwind CSS
 - ESLint
 
 The remaining feature screens are still JavaScript/JSX so the migration can happen incrementally without interrupting UI work.
 
-## Development
+## Code map
 
-```bash
-npm install
-npm run dev
-```
+- `src/config/appConfig.ts` holds app-wide route paths and session timeout settings.
+- `shared/access.ts` is the permission contract used by both client and server.
+- `server/src/` holds the API; `server/migrations/` holds ordered SQL database migrations.
+- `src/data/` holds shared records, storage helpers, voyage defaults, and report-template variables.
+- `src/components/` holds the screens and their interaction state; keep reusable defaults and cross-screen settings in `config/` or `data/`.
 
-Validation commands:
+## Access and data
 
-```bash
-npm run typecheck
-npm run lint
-npm run build
-```
+User accounts can be assigned separate **View** and **Edit** permissions for Vessels, Voyages, Ports Manager, Routes, Reports, and Users. Edit includes view. Dashboard and Bookings are available to all accounts.
 
-## Planned deployment
+Authentication, accounts, and user-management permissions are backed by a Node API and PostgreSQL. Passwords are hashed by the API; the browser receives an HTTP-only session cookie and never connects directly to PostgreSQL.
 
-The production target is one server computer on the port's LAN. Users will access the web client through that server. The database will run directly on the host hardware and will not be placed inside a Docker container.
-
-Docker can later package the web/API services while the database remains an externally managed host service. The frontend must not connect directly to the database; a server-side API will provide authentication, authorization, validation, and synchronization between ports.
-
-## GitHub hygiene
-
-Do not commit passwords, database credentials, private keys, `.env` files, `node_modules`, or `dist`. Local environment files are ignored; commit a sanitized `.env.example` when API configuration is introduced.
+Vessels, Voyages, Ports, Routes, Reports, and Booking operational records currently use browser-side storage and mock data. Their permissions control the interface, while account and user-management data are handled by the API.

@@ -28,6 +28,21 @@ export type VesselMovement = {
   time: string;
 };
 
+export type DashboardVessel = {
+  vessel: string;
+  route: string;
+  detailLabel: string;
+  detail: string;
+};
+
+export type OperationsAlert = {
+  vessel: string;
+  priority: "High" | "Medium";
+  title: string;
+  note: string;
+  time: string;
+};
+
 export type Route = {
   id: string;
   name: string;
@@ -37,6 +52,45 @@ export type Route = {
   destinationCode: string;
   status: string;
 };
+
+export type Port = {
+  id: string;
+  name: string;
+  code: string;
+  region: string;
+  status: string;
+};
+
+export const MOCK_PORTS: Port[] = [
+  {
+    id: "port-1",
+    name: "Port of Manila (South Harbor)",
+    code: "PH MNL",
+    region: "Luzon, Philippines",
+    status: "Active",
+  },
+  {
+    id: "port-2",
+    name: "Cebu International Port",
+    code: "PH CEB",
+    region: "Visayas, Philippines",
+    status: "Active",
+  },
+  {
+    id: "port-3",
+    name: "Batangas Port",
+    code: "PH BTG",
+    region: "Calabarzon, Philippines",
+    status: "Active",
+  },
+  {
+    id: "port-4",
+    name: "Davao Port Terminal",
+    code: "PH DVO",
+    region: "Mindanao, Philippines",
+    status: "Maintenance",
+  },
+];
 
 export const PASSENGER_BUNK_AREAS = [
   {
@@ -91,6 +145,59 @@ export const VESSEL_MOVEMENTS: VesselMovement[] = [
     statusClass: "text-orange-500 bg-orange-500/10",
     timeLabel: "ETA",
     time: "24 Aug, 13:00",
+  },
+];
+
+export const VESSELS_AT_BAY: DashboardVessel[] = [
+  {
+    vessel: "MV Harborlight",
+    route: "Manila → Cebu",
+    detailLabel: "Berth",
+    detail: "Pier 4 · unloading",
+  },
+  {
+    vessel: "MV Pacific Crest",
+    route: "Batangas → Calapan",
+    detailLabel: "Berth",
+    detail: "Terminal 2 · turnaround",
+  },
+];
+
+export const ARRIVING_VESSELS: DashboardVessel[] = [
+  {
+    vessel: "MV Island Trader",
+    route: "Manila → Cebu",
+    detailLabel: "ETA",
+    detail: "10:45 · 35 min",
+  },
+  {
+    vessel: "MV Coastal Star",
+    route: "Cebu → Tagbilaran",
+    detailLabel: "ETA",
+    detail: "12:20 · 2 hr 10 min",
+  },
+  {
+    vessel: "MV Northwind",
+    route: "Batangas → Puerto Galera",
+    detailLabel: "ETA",
+    detail: "14:00 · 3 hr 50 min",
+  },
+];
+
+export const OPERATIONS_ALERTS: OperationsAlert[] = [
+  {
+    vessel: "MV Island Trader",
+    priority: "High",
+    title: "Arrival running late",
+    note: "30 min behind schedule. Revised berth window is not yet confirmed.",
+    time: "Updated 10:10",
+  },
+  {
+    vessel: "MV Coastal Star",
+    priority: "Medium",
+    title: "Departure clearance pending",
+    note: "Port clearance is not logged. Confirm with the port agent before cutoff.",
+    time: "Updated 09:40",
   },
 ];
 

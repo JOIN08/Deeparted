@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Box,
   Wrench,
@@ -7,7 +7,6 @@ import {
   Save,
   Trash2,
   Plus,
-  Move,
   Layers,
   X,
   CheckCircle2,
@@ -23,13 +22,20 @@ import {
   PASSENGER_BUNK_AREAS,
   SHIP_PLAN_STORAGE_KEY,
 } from "../data/mockData";
+import {
+  getVesselLayoutStorageKey,
+  getVesselPassengerAreasStorageKey,
+} from "../data/vesselStorage";
 
 const GRID_SIZE = 20; // 20px grid unit
-const getSavedBunkBeds = () => {
+const getSavedBunkBeds = (vesselId) => {
   try {
-    const savedAreas = window.localStorage.getItem(
-      BUNK_CONFIGURATION_STORAGE_KEY,
-    );
+    const savedAreas =
+      window.localStorage.getItem(
+        getVesselPassengerAreasStorageKey(vesselId),
+      ) ||
+      (vesselId === "vessel-1" &&
+        window.localStorage.getItem(BUNK_CONFIGURATION_STORAGE_KEY));
     const savedArea = savedAreas ? JSON.parse(savedAreas)[0] : null;
     return (
       savedArea?.beds || PASSENGER_BUNK_AREAS[0].beds.map((bed) => ({ ...bed }))
@@ -39,8 +45,7 @@ const getSavedBunkBeds = () => {
   }
 };
 
-export function ShipBuilder() {
-  const [vesselName, setVesselName] = useState("MV Trans-Asia 12");
+export function ShipBuilder({ vesselId, vesselName, canEdit = false }) {
 
   // Floor / Deck Management State
   const [floors, setFloors] = useState([
@@ -74,7 +79,7 @@ export function ShipBuilder() {
       width: 140,
       height: 100,
       color: "bg-indigo-500/20 border-indigo-500 text-indigo-400",
-      beds: getSavedBunkBeds(),
+      beds: getSavedBunkBeds(vesselId),
     },
     {
       id: "3",
@@ -138,7 +143,12 @@ export function ShipBuilder() {
   useEffect(() => {
     const restorePlan = window.setTimeout(() => {
       try {
-        const savedPlan = window.localStorage.getItem(SHIP_PLAN_STORAGE_KEY);
+        const vesselPlanKey = getVesselLayoutStorageKey(vesselId);
+        const savedPlan =
+          window.localStorage.getItem(vesselPlanKey) ||
+          (vesselId === "vessel-1"
+            ? window.localStorage.getItem(SHIP_PLAN_STORAGE_KEY)
+            : null);
         if (savedPlan) {
           const parsedPlan = JSON.parse(savedPlan);
           if (Array.isArray(parsedPlan.floors)) setFloors(parsedPlan.floors);
@@ -150,17 +160,18 @@ export function ShipBuilder() {
       setIsPlanLoaded(true);
     }, 0);
     return () => window.clearTimeout(restorePlan);
-  }, []);
+  }, [vesselId]);
 
   useEffect(() => {
-    if (!isPlanLoaded) return;
+    if (!canEdit || !isPlanLoaded) return;
     window.localStorage.setItem(
-      SHIP_PLAN_STORAGE_KEY,
+      getVesselLayoutStorageKey(vesselId),
       JSON.stringify({ vesselName, floors, zones }),
     );
-  }, [isPlanLoaded, vesselName, floors, zones]);
+  }, [canEdit, isPlanLoaded, vesselId, vesselName, floors, zones]);
 
   useEffect(() => {
+    if (!canEdit) return;
     const bunkAreas = zones
       .filter((zone) => zone.type === "Passenger Bunk Area")
       .map((zone) => ({
@@ -170,16 +181,23 @@ export function ShipBuilder() {
         beds: zone.beds || [],
       }));
     window.localStorage.setItem(
-      BUNK_CONFIGURATION_STORAGE_KEY,
+      getVesselPassengerAreasStorageKey(vesselId),
       JSON.stringify(bunkAreas),
     );
+    if (vesselId === "vessel-1") {
+      window.localStorage.setItem(
+        BUNK_CONFIGURATION_STORAGE_KEY,
+        JSON.stringify(bunkAreas),
+      );
+    }
     window.dispatchEvent(new Event("passenger-bunks-updated"));
-  }, [zones]);
+    window.dispatchEvent(new Event("vessels-updated"));
+  }, [canEdit, vesselId, zones]);
 
   const snapToGrid = (val) => Math.round(val / GRID_SIZE) * GRID_SIZE;
   const saveDeckPlan = () => {
     window.localStorage.setItem(
-      SHIP_PLAN_STORAGE_KEY,
+      getVesselLayoutStorageKey(vesselId),
       JSON.stringify({ vesselName, floors, zones }),
     );
     alert("Saved multi-deck setup!");
@@ -482,30 +500,33 @@ export function ShipBuilder() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white dark:bg-[#0f172a] p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="bg-white dark:bg-github-panel p-5 border border-slate-200 dark:border-github-border shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Layers className="w-5 h-5 text-blue-500" /> Multi-Deck Spatial
             Vessel Designer
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500 dark:text-github-muted">
             Box-edged compartments, custom attribute configuration, and
             boat-shaped deck grid.
           </p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <input
-            type="text"
-            value={vesselName}
-            onChange={(e) => setVesselName(e.target.value)}
-            className="px-3 py-2 text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-          />
-          <button
-            onClick={saveDeckPlan}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-2 shadow-md shadow-blue-600/20"
-          >
-            <Save className="w-4 h-4" /> Save Deck Plan
-          </button>
+          <span className="border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 dark:border-github-border dark:bg-github-panel dark:text-slate-200">
+            {vesselName}
+          </span>
+          {canEdit ? (
+            <button
+              onClick={saveDeckPlan}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-2 shadow-md shadow-blue-600/20"
+            >
+              <Save className="w-4 h-4" /> Save Deck Plan
+            </button>
+          ) : (
+            <span className="text-xs font-semibold text-slate-500 dark:text-github-muted">
+              View only
+            </span>
+          )}
         </div>
       </div>
 
@@ -524,14 +545,14 @@ export function ShipBuilder() {
               }}
               className={`px-4 py-2 text-xs font-bold transition-all flex items-center gap-2 rounded ${
                 activeFloorId === floor.id
-                  ? "bg-teal-300 text-teal-950 shadow-md dark:bg-teal-700 dark:text-teal-50"
-                  : "bg-teal-100 text-teal-700 hover:bg-teal-200 dark:bg-teal-900 dark:text-teal-100 dark:hover:bg-teal-800"
+                  ? "bg-teal-300 text-teal-950 shadow-md dark:bg-github-accent dark:text-white"
+                  : "bg-teal-100 text-teal-700 hover:bg-teal-200 dark:bg-github-panel dark:text-github-muted dark:hover:bg-github-raised"
               }`}
             >
               <span>{floor.name}</span>
               {/* Internal Delete Button to Prevent Row Shifting */}
 
-              {floors.length > 1 && (
+              {canEdit && floors.length > 1 && (
                 <span
                   onClick={(e) => {
                     e.stopPropagation();
@@ -546,16 +567,16 @@ export function ShipBuilder() {
             </button>
           ))}
         </div>
-        <button
+        {canEdit && <button
           onClick={addFloor}
-          className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 shrink-0"
+          className="px-3 py-2 bg-slate-100 dark:bg-github-panel hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 shrink-0"
         >
           <Plus className="w-4 h-4 text-blue-500" /> Add Deck Floor
-        </button>
+        </button>}
       </div>
 
       {/* TOP: Boat Deck Canvas Grid */}
-      <div className="bg-white dark:bg-[#0f172a] p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center min-h-[460px]">
+      <div className="bg-white dark:bg-github-panel p-6 border border-slate-200 dark:border-github-border shadow-sm flex flex-col items-center justify-center min-h-[460px]">
         <div className="w-full flex items-center justify-between mb-4">
           <span className="w-full text-center text-xs font-bold text-blue-500 uppercase tracking-widest">
             {floors.find((f) => f.id === activeFloorId)?.name} Grid
@@ -580,7 +601,7 @@ export function ShipBuilder() {
             return (
               <div
                 key={zone.id}
-                onMouseDown={(e) => handleMouseDown(e, zone)}
+                onMouseDown={canEdit ? (e) => handleMouseDown(e, zone) : undefined}
                 style={{
                   left: `${zone.x}px`,
                   top: `${zone.y}px`,
@@ -591,7 +612,7 @@ export function ShipBuilder() {
                   isSelected
                     ? "ring-2 ring-white border-white z-20 shadow-lg"
                     : "z-10"
-                }`}
+                } ${canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}
               >
                 <div className="text-center w-full my-auto overflow-hidden">
                   <p className="text-[11px] font-extrabold uppercase tracking-wider truncate px-0.5">
@@ -601,19 +622,24 @@ export function ShipBuilder() {
                 </div>
 
                 {/* Quick Interactive Tooltip Indicators */}
-                {isBunkArea && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveBunkEditorZone(zone);
-                      setSelectedBedIds([]);
-                    }}
-                    className="w-full py-0.5 bg-indigo-500/30 hover:bg-indigo-500/50 border border-indigo-400 text-indigo-200 text-[9px] font-bold flex items-center justify-center gap-1"
-                  >
-                    <BedDouble className="w-3 h-3" /> {zone.beds?.length || 0}{" "}
-                    Beds
-                  </button>
-                )}
+                {isBunkArea &&
+                  (canEdit ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveBunkEditorZone(zone);
+                        setSelectedBedIds([]);
+                      }}
+                      className="w-full py-0.5 bg-indigo-500/30 hover:bg-indigo-500/50 border border-indigo-400 text-indigo-200 text-[9px] font-bold flex items-center justify-center gap-1"
+                    >
+                      <BedDouble className="w-3 h-3" /> {zone.beds?.length || 0}{" "}
+                      Beds
+                    </button>
+                  ) : (
+                    <span className="w-full border border-indigo-400/50 bg-indigo-500/20 py-0.5 text-center text-[9px] font-bold text-indigo-200">
+                      {zone.beds?.length || 0} beds
+                    </span>
+                  ))}
 
                 {isCargo && zone.cargoItems && zone.cargoItems.length > 0 && (
                   <div className="text-[8px] bg-amber-500/30 border border-amber-400/50 px-1 py-0.5 w-full text-center truncate">
@@ -628,9 +654,9 @@ export function ShipBuilder() {
       </div>
 
       {/* BOTTOM: Compartments Tool & Custom Attribute Settings (Placed Under Deck Canvas) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {canEdit && <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: Add Compartment Tool */}
-        <div className="bg-white dark:bg-[#0f172a] p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="bg-white dark:bg-github-panel p-5 border border-slate-200 dark:border-github-border shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
               <Box className="w-4 h-4 text-amber-500" /> Compartment Library
@@ -653,10 +679,10 @@ export function ShipBuilder() {
         </div>
 
         {/* Right: Selected Compartment Attributes & Custom Settings */}
-        <div className="lg:col-span-2 bg-white dark:bg-[#0f172a] p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="lg:col-span-2 bg-white dark:bg-github-panel p-5 border border-slate-200 dark:border-github-border shadow-sm space-y-4">
           {selectedZone && selectedZone.floorId === activeFloorId ? (
             <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-github-border pb-3">
                 <div className="flex items-center gap-2">
                   <SlidersHorizontal className="w-4 h-4 text-blue-500" />
                   <h3 className="font-bold text-sm text-slate-900 dark:text-white">
@@ -692,7 +718,7 @@ export function ShipBuilder() {
                         ),
                       )
                     }
-                    className="w-full px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-1.5 text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
                   />
                 </div>
 
@@ -705,7 +731,7 @@ export function ShipBuilder() {
                     onChange={(e) =>
                       updateZoneType(selectedZone.id, e.target.value)
                     }
-                    className="w-full px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-1.5 text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
                   >
                     <option value="Cargo Hold">Cargo Hold</option>
                     <option value="Engine Room">Engine Room</option>
@@ -739,7 +765,7 @@ export function ShipBuilder() {
                           ),
                         );
                       }}
-                      className="w-full px-2 py-1.5 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
+                      className="w-full px-2 py-1.5 text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white font-mono"
                     />
                   </div>
                   <div>
@@ -764,14 +790,14 @@ export function ShipBuilder() {
                           ),
                         );
                       }}
-                      className="w-full px-2 py-1.5 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
+                      className="w-full px-2 py-1.5 text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white font-mono"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Dynamic Type-Specific Attribute Attachments */}
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
+              <div className="pt-3 border-t border-slate-200 dark:border-github-border">
                 {/* 1. Cargo Hold Attributes */}
                 {selectedZone.type === "Cargo Hold" && (
                   <div className="space-y-3">
@@ -786,21 +812,21 @@ export function ShipBuilder() {
                         placeholder="Cargo description (e.g., Timber)"
                         value={newCargoName}
                         onChange={(e) => setNewCargoName(e.target.value)}
-                        className="px-2.5 py-1 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white flex-1"
+                        className="px-2.5 py-1 text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white flex-1"
                       />
                       <input
                         type="text"
                         placeholder="Weight (e.g. 15T)"
                         value={newCargoWeight}
                         onChange={(e) => setNewCargoWeight(e.target.value)}
-                        className="w-24 px-2 py-1 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                        className="w-24 px-2 py-1 text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
                       />
                       <input
                         type="number"
                         placeholder="Qty"
                         value={newCargoQty}
                         onChange={(e) => setNewCargoQty(e.target.value)}
-                        className="w-16 px-2 py-1 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                        className="w-16 px-2 py-1 text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
                       />
                       <button
                         onClick={() => addCargoItem(selectedZone.id)}
@@ -816,7 +842,7 @@ export function ShipBuilder() {
                         selectedZone.cargoItems.map((item) => (
                           <div
                             key={item.id}
-                            className="flex items-center justify-between bg-slate-100 dark:bg-slate-800/80 px-3 py-1.5 text-xs text-slate-700 dark:text-slate-200"
+                            className="flex items-center justify-between bg-slate-100 dark:bg-github-panel/80 px-3 py-1.5 text-xs text-slate-700 dark:text-slate-200"
                           >
                             <span>
                               <strong>{item.name}</strong> ({item.weight})
@@ -871,7 +897,7 @@ export function ShipBuilder() {
                               ),
                             )
                           }
-                          className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                          className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
                         />
                       </div>
                       <div>
@@ -896,7 +922,7 @@ export function ShipBuilder() {
                               ),
                             )
                           }
-                          className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                          className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
                         />
                       </div>
                       <div>
@@ -922,7 +948,7 @@ export function ShipBuilder() {
                               ),
                             )
                           }
-                          className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                          className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
                         >
                           <option value="Operational">Operational</option>
                           <option value="Maintenance">Maintenance</option>
@@ -975,14 +1001,14 @@ export function ShipBuilder() {
             </div>
           )}
         </div>
-      </div>
+      </div>}
 
       {/* ================= LEVEL 2: CANVAS MODAL WITH MULTI-SELECT & VISIBILITY FILTERS ================= */}
-      {activeBunkEditorZone && (
+      {canEdit && activeBunkEditorZone && (
         <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 shadow-2xl w-[95vw] h-[90vh] p-6 flex flex-col space-y-4 relative overflow-hidden">
+          <div className="bg-white dark:bg-github-panel border border-slate-200 dark:border-github-border shadow-2xl w-[95vw] h-[90vh] p-6 flex flex-col space-y-4 relative overflow-hidden">
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3 shrink-0">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-github-border pb-3 shrink-0">
               <div>
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <BedDouble className="w-5 h-5 text-indigo-500" /> Bunk Matrix
@@ -1001,7 +1027,7 @@ export function ShipBuilder() {
               </div>
               <button
                 onClick={() => setActiveBunkEditorZone(null)}
-                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
+                className="p-1.5 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-400"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1025,7 +1051,7 @@ export function ShipBuilder() {
               </div>
 
               {/* Visibility Filter Tools */}
-              <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-800 p-1.5 border border-slate-200 dark:border-slate-700 text-xs">
+              <div className="flex items-center gap-3 bg-slate-100 dark:bg-github-panel p-1.5 border border-slate-200 dark:border-github-border text-xs">
                 <span className="text-slate-400 text-[11px] font-semibold pl-2">
                   Filter View:
                 </span>
@@ -1063,7 +1089,7 @@ export function ShipBuilder() {
             </div>
 
             {/* Canvas Container */}
-            <div className="flex-1 overflow-auto border-2 border-slate-300 dark:border-slate-800 bg-slate-950 relative shadow-inner">
+            <div className="flex-1 overflow-auto border-2 border-slate-300 dark:border-github-border bg-slate-950 relative shadow-inner">
               <div
                 ref={bunkCanvasRef}
                 onMouseDown={handleCanvasMouseDown}

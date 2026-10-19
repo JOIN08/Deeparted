@@ -14,9 +14,9 @@ export function KpiCards() {
       {stats.map((item, idx) => {
         const Icon = item.icon;
         return (
-          <div key={idx} className="bg-white dark:bg-[#0f172a] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+          <div key={idx} className="bg-white dark:bg-github-panel p-5 rounded-2xl border border-slate-200 dark:border-github-border shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{item.label}</p>
+              <p className="text-xs font-medium text-slate-500 dark:text-github-muted">{item.label}</p>
               <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{item.value}</h3>
               <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
                 <TrendingUp className="w-3 h-3 text-emerald-500" />

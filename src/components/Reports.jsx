@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   FileText,
   Plus,
@@ -42,6 +42,10 @@ import {
   Move,
 } from "lucide-react";
 import { PASSENGER_TICKET_REPORT } from "../data/passengerTicketTemplate";
+import {
+  getReportSampleData,
+  REPORT_VARIABLE_GROUPS,
+} from "../data/reportTemplateConfig";
 
 // ---------------------------------------------------------------------------
 // Storage helpers
@@ -719,7 +723,7 @@ function FloatingBoxView({
   );
 }
 
-export function Reports() {
+export function Reports({ canEdit = false }) {
   const [activeView, setActiveView] = useState("list"); // 'list' | 'editor' | 'preview'
 
   const [reports, setReports] = useState(() =>
@@ -743,12 +747,18 @@ export function Reports() {
     ]),
   );
 
-  useEffect(() => saveToStorage(STORAGE_KEYS.reports, reports), [reports]);
+  useEffect(() => {
+    if (canEdit) saveToStorage(STORAGE_KEYS.reports, reports);
+  }, [canEdit, reports]);
   useEffect(
-    () => saveToStorage(STORAGE_KEYS.customVariables, customVariables),
-    [customVariables],
+    () => {
+      if (canEdit) saveToStorage(STORAGE_KEYS.customVariables, customVariables);
+    },
+    [canEdit, customVariables],
   );
-  useEffect(() => saveToStorage(STORAGE_KEYS.assets, assets), [assets]);
+  useEffect(() => {
+    if (canEdit) saveToStorage(STORAGE_KEYS.assets, assets);
+  }, [canEdit, assets]);
 
   const [currentReport, setCurrentReport] = useState(null);
   const [isDirty, setIsDirty] = useState(false);
@@ -822,57 +832,10 @@ export function Reports() {
   const [imageUrlInput, setImageUrlInput] = useState("");
   const [fontSizeInput, setFontSizeInput] = useState(16);
 
-  // Categorized Dynamic Variables Palette
-  const VARIABLE_GROUPS = [
-    {
-      category: "Passenger & Ticket",
-      vars: [
-        { label: "Passenger Name", tag: "{{passenger_name}}" },
-        { label: "Bed / Berth No.", tag: "{{bed_number}}" },
-        { label: "Class Type", tag: "{{accommodation_class}}" },
-        { label: "Ticket Price", tag: "{{ticket_price}}" },
-        { label: "Payment Status", tag: "{{payment_status}}" },
-        { label: "Ticket Reference ID", tag: "{{ticket_id}}" },
-      ],
-    },
-    {
-      category: "Vessel & Fleet",
-      vars: [
-        { label: "Vessel Name", tag: "{{vessel_name}}" },
-        { label: "IMO / Call Sign", tag: "{{vessel_imo}}" },
-        { label: "Captain Name", tag: "{{captain_name}}" },
-        { label: "Max Capacity", tag: "{{vessel_capacity}}" },
-      ],
-    },
-    {
-      category: "Route & Port",
-      vars: [
-        { label: "Origin Port", tag: "{{origin_port}}" },
-        { label: "Destination Port", tag: "{{destination_port}}" },
-        { label: "Departure Date/Time", tag: "{{departure_date}}" },
-        { label: "Arrival Date/Time", tag: "{{arrival_date}}" },
-      ],
-    },
-    {
-      category: "Financial & Monthly Analytics",
-      vars: [
-        { label: "Report Month", tag: "{{report_month}}" },
-        { label: "Report Year", tag: "{{report_year}}" },
-        { label: "Passenger Fare Revenue", tag: "{{total_passenger_revenue}}" },
-        { label: "Cargo & Freight Revenue", tag: "{{total_cargo_revenue}}" },
-        { label: "Gross Earnings", tag: "{{gross_monthly_earnings}}" },
-        { label: "Operational Cost", tag: "{{total_operational_cost}}" },
-      ],
-    },
-    {
-      category: "System & Metadata",
-      vars: [
-        { label: "Current Date", tag: "{{current_date}}" },
-        { label: "Logged Admin", tag: "{{admin_username}}" },
-        { label: "Company Name", tag: "{{company_name}}" },
-        { label: "Signatory Name", tag: "{{signatory_name}}" },
-      ],
-    },
+  // Custom variables are user-managed data; built-in variable definitions and
+  // preview sample values live in data/reportTemplateConfig.js.
+  const variableGroups = [
+    ...REPORT_VARIABLE_GROUPS,
     ...(customVariables.length > 0
       ? [
           {
@@ -884,38 +847,8 @@ export function Reports() {
       : []),
   ];
 
-  const ALL_VARIABLE_OPTIONS = VARIABLE_GROUPS.flatMap((g) => g.vars);
-
-  // Sample mock data for live preview (kept in sync with variables above)
-  const SAMPLE_DATA = {
-    "{{passenger_name}}": "Juan Cruz",
-    "{{bed_number}}": "B-104 Upper",
-    "{{accommodation_class}}": "Tourist Aircon",
-    "{{ticket_price}}": "₱1,250.00",
-    "{{payment_status}}": "PAID",
-    "{{ticket_id}}": "TKT-2026-9901",
-    "{{vessel_name}}": "MV Trans-Island Express",
-    "{{vessel_imo}}": "IMO: 9123456",
-    "{{captain_name}}": "Capt. R. Rodriguez",
-    "{{vessel_capacity}}": "450 Passengers",
-    "{{origin_port}}": "Port of Manila",
-    "{{destination_port}}": "Cebu International Port",
-    "{{departure_date}}": "August 30, 2026 - 08:00 AM",
-    "{{arrival_date}}": "August 31, 2026 - 04:00 AM",
-    "{{report_month}}": "August",
-    "{{report_year}}": "2026",
-    "{{total_passenger_revenue}}": "₱4,850,000.00",
-    "{{total_cargo_revenue}}": "₱2,100,000.00",
-    "{{gross_monthly_earnings}}": "₱6,950,000.00",
-    "{{total_operational_cost}}": "₱3,200,000.00",
-    "{{current_date}}": new Date().toLocaleDateString(),
-    "{{admin_username}}": "Jeff",
-    "{{company_name}}": "Maritime Logistics Inc.",
-    "{{signatory_name}}": "Jeff Santos",
-    ...Object.fromEntries(
-      customVariables.map((v) => [v.tag, v.sample || `[${v.label}]`]),
-    ),
-  };
+  const allVariableOptions = variableGroups.flatMap((group) => group.vars);
+  const sampleData = getReportSampleData(customVariables);
 
   // ---------------------------------------------------------------------
   // Rich text editor commands. These always act on whichever contentEditable
@@ -1114,6 +1047,7 @@ export function Reports() {
   // Report list actions
   // ---------------------------------------------------------------------
   const openNewReport = () => {
+    if (!canEdit) return;
     setCurrentReport({
       id: `rep-${Date.now()}`,
       title: "Untitled Report Template",
@@ -1128,6 +1062,7 @@ export function Reports() {
   };
 
   const editReport = (rep) => {
+    if (!canEdit) return;
     setCurrentReport({ floatingElements: [], ...rep });
     if (
       rep.paperSize &&
@@ -1153,6 +1088,7 @@ export function Reports() {
   };
 
   const duplicateReport = (rep) => {
+    if (!canEdit) return;
     const copy = {
       floatingElements: [],
       ...rep,
@@ -1163,6 +1099,7 @@ export function Reports() {
   };
 
   const saveReport = () => {
+    if (!canEdit) return;
     const updatedContent = editorRef.current
       ? editorRef.current.innerHTML
       : currentReport.content;
@@ -1187,6 +1124,7 @@ export function Reports() {
   };
 
   const deleteReport = (id) => {
+    if (!canEdit) return;
     if (confirm("Delete this report template? This cannot be undone.")) {
       setReports((prev) => prev.filter((r) => r.id !== id));
     }
@@ -1204,6 +1142,16 @@ export function Reports() {
   };
 
   const goToPreview = () => setActiveView("preview");
+  const openReportPreview = (report) => {
+    setCurrentReport({ floatingElements: [], ...report });
+    setPaperSize(
+      report.paperSize && ["A4", "Letter", "Legal", "Receipt"].includes(report.paperSize)
+        ? report.paperSize
+        : "A4",
+    );
+    setIsDirty(false);
+    setActiveView("preview");
+  };
 
   // ---------------------------------------------------------------------
   // Import / export templates as JSON, so reports can be backed up or
@@ -1234,6 +1182,7 @@ export function Reports() {
   };
 
   const handleImportFile = (e) => {
+    if (!canEdit) return;
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -1310,12 +1259,12 @@ export function Reports() {
     const rawTextHtml = editorRef.current
       ? editorRef.current.innerHTML
       : currentReport.content;
-    const textHtml = substituteVariablesInHTML(rawTextHtml, SAMPLE_DATA, true);
+    const textHtml = substituteVariablesInHTML(rawTextHtml, sampleData, true);
 
     const floatingHtml = (currentReport.floatingElements || [])
       .map((el) => {
         const raw = renderFloatingContent(el);
-        const substituted = substituteVariablesInHTML(raw, SAMPLE_DATA, true);
+        const substituted = substituteVariablesInHTML(raw, sampleData, true);
         return `<div style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.width}px;height:${el.height}px;z-index:${el.z};">${substituted}</div>`;
       })
       .join("");
@@ -1350,7 +1299,7 @@ export function Reports() {
     printWindow.print();
   };
 
-  const filteredGroups = VARIABLE_GROUPS.map((group) => ({
+  const filteredGroups = variableGroups.map((group) => ({
     ...group,
     vars: group.vars.filter(
       (v) =>
@@ -1364,47 +1313,52 @@ export function Reports() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white dark:bg-[#0f172a] p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between gap-4 flex-wrap">
+      <div className="bg-white dark:bg-github-panel p-6 border border-slate-200 dark:border-github-border shadow-sm flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <FileText className="w-6 h-6 text-blue-500" /> Report & Document
             Generator
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Design print-ready templates for tickets, boarding passes, and
-            monthly earning reports.
+          <p className="text-xs text-slate-500 dark:text-github-muted mt-1">
+            {canEdit
+              ? "Design print-ready templates for tickets, boarding passes, and monthly earning reports."
+              : "Review and print available ticket, boarding pass, and monthly earning templates."}
           </p>
         </div>
 
         {activeView === "list" && (
           <div className="flex items-center gap-2">
-            <input
-              ref={importInputRef}
-              type="file"
-              accept="application/json"
-              className="hidden"
-              onChange={handleImportFile}
-            />
-            <button
-              onClick={() => importInputRef.current?.click()}
-              className="px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold flex items-center gap-2"
-              title="Import template(s) from JSON"
-            >
-              <Upload className="w-4 h-4" /> Import
-            </button>
+            {canEdit && (
+              <>
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept="application/json"
+                  className="hidden"
+                  onChange={handleImportFile}
+                />
+                <button
+                  onClick={() => importInputRef.current?.click()}
+                  className="px-3 py-2.5 bg-slate-100 dark:bg-github-panel text-slate-700 dark:text-github-text text-xs font-bold flex items-center gap-2"
+                  title="Import template(s) from JSON"
+                >
+                  <Upload className="w-4 h-4" /> Import
+                </button>
+              </>
+            )}
             <button
               onClick={exportAllReports}
-              className="px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold flex items-center gap-2"
+              className="px-3 py-2.5 bg-slate-100 dark:bg-github-panel text-slate-700 dark:text-github-text text-xs font-bold flex items-center gap-2"
               title="Export all templates as JSON"
             >
               <Download className="w-4 h-4" /> Export All
             </button>
-            <button
+            {canEdit && <button
               onClick={openNewReport}
               className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-blue-600/20"
             >
               <Plus className="w-4 h-4" /> Create New Template
-            </button>
+            </button>}
           </div>
         )}
 
@@ -1417,7 +1371,7 @@ export function Reports() {
             )}
             <button
               onClick={goToList}
-              className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold"
+              className="px-3 py-1.5 bg-slate-100 dark:bg-github-panel text-slate-700 dark:text-github-text text-xs font-bold"
             >
               Back to List
             </button>
@@ -1439,12 +1393,12 @@ export function Reports() {
             )}
             {activeView === "preview" && (
               <>
-                <button
+                {canEdit && <button
                   onClick={() => setActiveView("editor")}
-                  className="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white text-xs font-bold flex items-center gap-1.5"
+                  className="px-3 py-1.5 bg-slate-200 dark:bg-github-raised text-slate-800 dark:text-white text-xs font-bold flex items-center gap-1.5"
                 >
                   <Edit3 className="w-3.5 h-3.5" /> Back to Editor
-                </button>
+                </button>}
                 <button
                   onClick={handlePrint}
                   className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5"
@@ -1460,7 +1414,7 @@ export function Reports() {
       {/* VIEW 1: TEMPLATE LIST */}
       {activeView === "list" &&
         (reports.length === 0 ? (
-          <div className="bg-white dark:bg-[#0f172a] border border-dashed border-slate-300 dark:border-slate-700 p-10 text-center">
+          <div className="bg-white dark:bg-github-panel border border-dashed border-slate-300 dark:border-github-border p-10 text-center">
             <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
             <p className="text-sm text-slate-500">
               No report templates yet. Create your first one to get started.
@@ -1471,7 +1425,7 @@ export function Reports() {
             {reports.map((rep) => (
               <div
                 key={rep.id}
-                className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-5 shadow-sm flex flex-col justify-between space-y-4"
+                className="bg-white dark:bg-github-panel border border-slate-200 dark:border-github-border p-5 shadow-sm flex flex-col justify-between space-y-4"
               >
                 <div>
                   <div className="flex items-center justify-between gap-2">
@@ -1479,34 +1433,40 @@ export function Reports() {
                       {rep.paperSize || "A4"}
                     </span>
                     <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => editReport(rep)}
-                        className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
-                        title="Edit Template"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => duplicateReport(rep)}
-                        className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
-                        title="Duplicate"
-                      >
-                        <Copy className="w-4 h-4" />
-                      </button>
+                      {canEdit && (
+                        <>
+                          <button
+                            onClick={() => editReport(rep)}
+                            className="p-1 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-500"
+                            title="Edit Template"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => duplicateReport(rep)}
+                            className="p-1 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-500"
+                            title="Duplicate"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
                       <button
                         onClick={() => exportReport(rep)}
-                        className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+                        className="p-1 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-500"
                         title="Export as JSON"
                       >
                         <Download className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={() => deleteReport(rep.id)}
-                        className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-red-500"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={() => deleteReport(rep.id)}
+                          className="p-1 hover:bg-slate-100 dark:hover:bg-github-raised text-red-500"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                   <h3 className="font-bold text-sm text-slate-900 dark:text-white mt-2">
@@ -1514,12 +1474,12 @@ export function Reports() {
                   </h3>
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                <div className="pt-3 border-t border-slate-100 dark:border-github-border flex items-center justify-between text-xs">
                   <button
-                    onClick={() => editReport(rep)}
+                    onClick={() => canEdit ? editReport(rep) : openReportPreview(rep)}
                     className="text-blue-500 hover:underline font-semibold"
                   >
-                    Open Editor →
+                    {canEdit ? "Open Editor →" : "View Report →"}
                   </button>
                 </div>
               </div>
@@ -1528,12 +1488,12 @@ export function Reports() {
         ))}
 
       {/* VIEW 2: RICH-TEXT + FLOATING-BOX EDITOR */}
-      {activeView === "editor" && currentReport && (
+      {canEdit && activeView === "editor" && currentReport && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Panel: Variables / Elements / Images */}
-          <div className="lg:col-span-4 bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col max-h-[750px]">
+          <div className="lg:col-span-4 bg-white dark:bg-github-panel border border-slate-200 dark:border-github-border shadow-sm flex flex-col max-h-[750px]">
             {/* Tab switcher */}
-            <div className="flex border-b border-slate-200 dark:border-slate-800">
+            <div className="flex border-b border-slate-200 dark:border-github-border">
               {[
                 { id: "variables", label: "Variables", icon: Sparkles },
                 { id: "elements", label: "Elements", icon: Table2 },
@@ -1554,7 +1514,7 @@ export function Reports() {
             </div>
 
             <div className="p-4 space-y-4 overflow-y-auto flex-1">
-              <p className="text-[11px] text-slate-400 bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700 px-2 py-1.5">
+              <p className="text-[11px] text-slate-400 bg-slate-50 dark:bg-github-panel/60 border border-slate-100 dark:border-github-border px-2 py-1.5">
                 <strong>Click</strong> to insert into the text where your cursor
                 is. <strong>Drag</strong> onto the page to place a movable box.
                 Select a box on the page to change its color, boldness, or (for
@@ -1571,7 +1531,7 @@ export function Reports() {
                       value={variableSearch}
                       onChange={(e) => setVariableSearch(e.target.value)}
                       placeholder="Search variables..."
-                      className="w-full pl-7 pr-2 py-1.5 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                      className="w-full pl-7 pr-2 py-1.5 text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
                     />
                   </div>
 
@@ -1598,7 +1558,7 @@ export function Reports() {
                                 onClick={guardClick(() =>
                                   insertVariable(v.tag),
                                 )}
-                                className="text-[11px] font-mono bg-slate-100 dark:bg-slate-800 hover:bg-blue-500/10 hover:border-blue-500/40 hover:text-blue-500 border border-slate-200 dark:border-slate-700 px-2 py-1 flex items-center gap-1 cursor-grab active:cursor-grabbing text-slate-700 dark:text-slate-300 transition-colors"
+                                className="text-[11px] font-mono bg-slate-100 dark:bg-github-panel hover:bg-blue-500/10 hover:border-blue-500/40 hover:text-blue-500 border border-slate-200 dark:border-github-border px-2 py-1 flex items-center gap-1 cursor-grab active:cursor-grabbing text-slate-700 dark:text-github-text transition-colors"
                               >
                                 <GripVertical className="w-3 h-3 text-slate-400 shrink-0" />
                                 {v.label}
@@ -1624,7 +1584,7 @@ export function Reports() {
                     )}
                   </div>
 
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <div className="pt-2 border-t border-slate-100 dark:border-github-border">
                     {!showAddVariable ? (
                       <button
                         onClick={() => setShowAddVariable(true)}
@@ -1633,20 +1593,20 @@ export function Reports() {
                         <Plus className="w-3 h-3" /> Add custom variable
                       </button>
                     ) : (
-                      <div className="space-y-1.5 bg-slate-50 dark:bg-slate-800/60 p-2 border border-slate-200 dark:border-slate-700">
+                      <div className="space-y-1.5 bg-slate-50 dark:bg-github-panel/60 p-2 border border-slate-200 dark:border-github-border">
                         <input
                           type="text"
                           value={newVarLabel}
                           onChange={(e) => setNewVarLabel(e.target.value)}
                           placeholder="Label (e.g. Container No.)"
-                          className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                          className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-github-border bg-white dark:bg-github-canvas text-slate-900 dark:text-white"
                         />
                         <input
                           type="text"
                           value={newVarKey}
                           onChange={(e) => setNewVarKey(e.target.value)}
                           placeholder="key_like_this"
-                          className="w-full px-2 py-1 text-xs font-mono border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                          className="w-full px-2 py-1 text-xs font-mono border border-slate-200 dark:border-github-border bg-white dark:bg-github-canvas text-slate-900 dark:text-white"
                         />
                         <div className="flex items-center gap-1.5">
                           <button
@@ -1661,7 +1621,7 @@ export function Reports() {
                               setNewVarLabel("");
                               setNewVarKey("");
                             }}
-                            className="flex-1 px-2 py-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-bold"
+                            className="flex-1 px-2 py-1 bg-slate-200 dark:bg-github-raised text-slate-700 dark:text-github-text text-[11px] font-bold"
                           >
                             Cancel
                           </button>
@@ -1701,7 +1661,7 @@ export function Reports() {
                             }),
                           ),
                         )}
-                        className="flex flex-col items-center gap-1.5 py-3 px-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-500/40 hover:bg-blue-500/5 text-slate-600 dark:text-slate-300 cursor-grab active:cursor-grabbing transition-colors"
+                        className="flex flex-col items-center gap-1.5 py-3 px-2 bg-slate-50 dark:bg-github-panel border border-slate-200 dark:border-github-border hover:border-blue-500/40 hover:bg-blue-500/5 text-slate-600 dark:text-github-text cursor-grab active:cursor-grabbing transition-colors"
                       >
                         <block.icon className="w-4 h-4" />
                         <span className="text-[10px] font-semibold text-center">
@@ -1710,7 +1670,7 @@ export function Reports() {
                       </button>
                     ))}
                   </div>
-                  <p className="text-[10px] text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <p className="text-[10px] text-slate-400 pt-2 border-t border-slate-100 dark:border-github-border">
                     Drag any of these onto the page, then select it there to
                     change its color, weight, size, row/column count, or which
                     variable it displays (for Signature, QR Code, and Barcode).
@@ -1742,17 +1702,17 @@ export function Reports() {
                       value={imageUrlInput}
                       onChange={(e) => setImageUrlInput(e.target.value)}
                       placeholder="Paste image URL..."
-                      className="flex-1 px-2 py-1.5 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                      className="flex-1 px-2 py-1.5 text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
                     />
                     <button
                       onClick={insertImageFromUrl}
-                      className="px-2 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[11px] font-bold"
+                      className="px-2 py-1.5 bg-slate-100 dark:bg-github-panel text-slate-600 dark:text-github-text text-[11px] font-bold"
                     >
                       Insert
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <div className="grid grid-cols-3 gap-3 pt-2 border-t border-slate-100 dark:border-github-border">
                     {assets.map((asset) => (
                       <div
                         key={asset.id}
@@ -1773,7 +1733,7 @@ export function Reports() {
                               `<img src="${asset.dataUrl}" style="max-width:220px;" alt="${asset.name}" />`,
                             ),
                           )}
-                          className="w-full h-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-500/40 flex items-center justify-center p-1.5 cursor-grab active:cursor-grabbing overflow-hidden"
+                          className="w-full h-full bg-slate-50 dark:bg-github-panel border border-slate-200 dark:border-github-border hover:border-blue-500/40 flex items-center justify-center p-1.5 cursor-grab active:cursor-grabbing overflow-hidden"
                           title={asset.name}
                         >
                           <img
@@ -1804,7 +1764,7 @@ export function Reports() {
           {/* Right Panel: Canvas */}
           <div className="lg:col-span-8 space-y-3">
             {/* Top Toolbar */}
-            <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-2 shadow-sm flex flex-wrap items-center gap-2">
+            <div className="bg-white dark:bg-github-panel border border-slate-200 dark:border-github-border p-2 shadow-sm flex flex-wrap items-center gap-2">
               {/* Document Title */}
               <input
                 type="text"
@@ -1813,21 +1773,21 @@ export function Reports() {
                   setCurrentReport({ ...currentReport, title: e.target.value })
                 }
                 placeholder="Template Title..."
-                className="px-2 py-1 text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white mr-2 flex-1 min-w-[160px]"
+                className="px-2 py-1 text-xs font-bold border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white mr-2 flex-1 min-w-[160px]"
               />
 
               {/* Undo / Redo */}
-              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
+              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-github-border pl-2">
                 <button
                   onClick={() => executeCommand("undo")}
-                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-700 dark:text-slate-200"
                   title="Undo"
                 >
                   <Undo2 className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => executeCommand("redo")}
-                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-700 dark:text-slate-200"
                   title="Redo"
                 >
                   <Redo2 className="w-3.5 h-3.5" />
@@ -1835,65 +1795,65 @@ export function Reports() {
               </div>
 
               {/* Formatting Actions */}
-              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
+              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-github-border pl-2">
                 <button
                   onClick={() => executeCommand("bold")}
-                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-700 dark:text-slate-200"
                   title="Bold"
                 >
                   <Bold className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => executeCommand("italic")}
-                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-700 dark:text-slate-200"
                   title="Italic"
                 >
                   <Italic className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => executeCommand("underline")}
-                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-700 dark:text-slate-200"
                   title="Underline"
                 >
                   <Underline className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
+              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-github-border pl-2">
                 <button
                   onClick={() => executeCommand("justifyLeft")}
-                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-700 dark:text-slate-200"
                   title="Align left"
                 >
                   <AlignLeft className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => executeCommand("justifyCenter")}
-                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-700 dark:text-slate-200"
                   title="Align center"
                 >
                   <AlignCenter className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => executeCommand("justifyRight")}
-                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-700 dark:text-slate-200"
                   title="Align right"
                 >
                   <AlignRight className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
+              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-github-border pl-2">
                 <button
                   onClick={() => executeCommand("insertUnorderedList")}
-                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-700 dark:text-slate-200"
                   title="Bullet list"
                 >
                   <List className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => executeCommand("insertOrderedList")}
-                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-700 dark:text-slate-200"
                   title="Numbered list"
                 >
                   <ListOrdered className="w-3.5 h-3.5" />
@@ -1901,12 +1861,12 @@ export function Reports() {
               </div>
 
               {/* Font family / numeric size */}
-              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
+              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-github-border pl-2">
                 <Type className="w-3.5 h-3.5 text-slate-400" />
                 <select
                   onChange={(e) => executeCommand("fontName", e.target.value)}
                   defaultValue=""
-                  className="text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-1.5 py-1 text-slate-900 dark:text-white"
+                  className="text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel px-1.5 py-1 text-slate-900 dark:text-white"
                   title="Font family"
                 >
                   <option value="" disabled>
@@ -1931,14 +1891,14 @@ export function Reports() {
                     }
                   }}
                   onBlur={() => applyFontSize(fontSizeInput)}
-                  className="w-14 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-1.5 py-1 text-slate-900 dark:text-white"
+                  className="w-14 text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel px-1.5 py-1 text-slate-900 dark:text-white"
                   title="Font size in px - select text first, then Enter to apply"
                 />
                 <span className="text-[10px] text-slate-400">px</span>
               </div>
 
               {/* Colors */}
-              <div className="flex items-center gap-1.5 border-l border-slate-200 dark:border-slate-700 pl-2">
+              <div className="flex items-center gap-1.5 border-l border-slate-200 dark:border-github-border pl-2">
                 <label
                   className="flex items-center gap-1 cursor-pointer"
                   title="Text color"
@@ -1968,7 +1928,7 @@ export function Reports() {
               </div>
 
               {/* Quick insert table */}
-              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
+              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-github-border pl-2">
                 <button
                   onClick={() =>
                     insertHTMLAtCursor(
@@ -1978,7 +1938,7 @@ export function Reports() {
                       }),
                     )
                   }
-                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-700 dark:text-slate-200"
                   title="Insert table"
                 >
                   <Table2 className="w-3.5 h-3.5" />
@@ -1986,10 +1946,10 @@ export function Reports() {
               </div>
 
               {/* Zoom */}
-              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
+              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-github-border pl-2">
                 <button
                   onClick={() => setZoom((z) => Math.max(50, z - 10))}
-                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-700 dark:text-slate-200"
                   title="Zoom out"
                 >
                   <ZoomOut className="w-3.5 h-3.5" />
@@ -1999,7 +1959,7 @@ export function Reports() {
                 </span>
                 <button
                   onClick={() => setZoom((z) => Math.min(150, z + 10))}
-                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-700 dark:text-slate-200"
                   title="Zoom in"
                 >
                   <ZoomIn className="w-3.5 h-3.5" />
@@ -2007,12 +1967,12 @@ export function Reports() {
               </div>
 
               {/* Paper Size Selector */}
-              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
+              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-github-border pl-2">
                 <Layers className="w-3.5 h-3.5 text-slate-400" />
                 <select
                   value={paperSize}
                   onChange={(e) => setPaperSize(e.target.value)}
-                  className="text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2 py-1 text-slate-900 dark:text-white"
+                  className="text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel px-2 py-1 text-slate-900 dark:text-white"
                 >
                   <option value="A4">A4 Standard</option>
                   <option value="Letter">US Letter</option>
@@ -2025,7 +1985,7 @@ export function Reports() {
 
             {/* Custom Dimension Inputs */}
             {paperSize === "Custom" && (
-              <div className="bg-slate-100 dark:bg-slate-800/80 p-2 border border-slate-200 dark:border-slate-700 flex items-center gap-3 text-xs">
+              <div className="bg-slate-100 dark:bg-github-panel/80 p-2 border border-slate-200 dark:border-github-border flex items-center gap-3 text-xs">
                 <span className="font-bold text-slate-500">
                   Custom Dimensions:
                 </span>
@@ -2058,7 +2018,7 @@ export function Reports() {
 
             {/* Document Page Canvas */}
             <div
-              className="bg-slate-200 dark:bg-slate-900 p-8 flex justify-center overflow-auto"
+              className="bg-slate-200 dark:bg-github-canvas p-8 flex justify-center overflow-auto"
               style={{ minHeight: 600 }}
             >
               <div
@@ -2096,7 +2056,7 @@ export function Reports() {
                       el={el}
                       zoom={zoom}
                       selected={selectedFloatingId === el.id}
-                      variableOptions={ALL_VARIABLE_OPTIONS}
+                      variableOptions={allVariableOptions}
                       onSelect={() => setSelectedFloatingId(el.id)}
                       onChange={(patch) => updateFloatingElement(el.id, patch)}
                       onDelete={() => deleteFloatingElement(el.id)}
@@ -2122,7 +2082,7 @@ export function Reports() {
 
       {/* VIEW 3: LIVE PREVIEW WITH MOCK DATA */}
       {activeView === "preview" && (
-        <div className="bg-slate-200 dark:bg-slate-900 p-8 flex justify-center overflow-auto">
+        <div className="bg-slate-200 dark:bg-github-canvas p-8 flex justify-center overflow-auto">
           <div
             className="bg-white shadow-2xl border border-slate-300"
             style={{ width: pageSize.width }}

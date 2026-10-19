@@ -7,6 +7,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock3,
+  DollarSign,
   Pause,
   Play,
   Plus,
@@ -14,23 +15,24 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { MOCK_ROUTES } from "../data/mockData";
-
-const VESSELS = [
-  { id: "vessel-1", name: "MV Trans-Asia 12", capacity: 420 },
-  { id: "vessel-2", name: "MV Cebu Star", capacity: 280 },
-  { id: "vessel-3", name: "MV Island Trader", capacity: 160 },
-];
-
-const DAYS = [
-  { value: 1, label: "Mon" },
-  { value: 2, label: "Tue" },
-  { value: 3, label: "Wed" },
-  { value: 4, label: "Thu" },
-  { value: 5, label: "Fri" },
-  { value: 6, label: "Sat" },
-  { value: 0, label: "Sun" },
-];
+import {
+  BUNK_CONFIGURATION_STORAGE_KEY,
+  MOCK_ROUTES,
+  PASSENGER_BUNK_AREAS,
+} from "../data/mockData";
+import {
+  getFareForArea,
+  loadVoyageSchedules,
+  NEW_SCHEDULE_DEFAULTS,
+  saveVoyageSchedules,
+  VOYAGE_DAYS,
+} from "../data/voyageSchedules";
+import {
+  DEFAULT_VESSELS,
+  getVesselPassengerAreasStorageKey,
+  getVesselById,
+  loadVessels,
+} from "../data/vesselStorage";
 
 const STATUS_STYLES = {
   Scheduled: "text-blue-700 bg-blue-500/10 border-blue-500/20",
@@ -40,37 +42,25 @@ const STATUS_STYLES = {
   Cancelled: "text-red-700 bg-red-500/10 border-red-500/20",
 };
 
-const initialSchedules = [
-  {
-    id: "schedule-1",
-    name: "Manila - Cebu Express",
-    routeId: "route-1",
-    vesselId: "vessel-1",
-    days: [1, 3, 5],
-    departureTime: "18:30",
-    arrivalTime: "11:00",
-    durationHours: 16,
-    status: "Active",
-  },
-  {
-    id: "schedule-2",
-    name: "Batangas - Cebu Freight",
-    routeId: "route-2",
-    vesselId: "vessel-2",
-    days: [2, 4],
-    departureTime: "08:00",
-    arrivalTime: "22:00",
-    durationHours: 14,
-    status: "Paused",
-  },
-];
-
-const emptySchedule = {
-  routeId: MOCK_ROUTES[0].id,
-  vesselId: VESSELS[0].id,
-  days: [1, 3, 5],
-  departureTime: "08:00",
-  arrivalTime: "16:00",
+const loadPassengerAreas = (vesselId) => {
+  try {
+    const savedAreas =
+      window.localStorage.getItem(
+        getVesselPassengerAreasStorageKey(vesselId),
+      ) ||
+      (vesselId === "vessel-1" &&
+        window.localStorage.getItem(BUNK_CONFIGURATION_STORAGE_KEY));
+    const parsedAreas = savedAreas
+      ? JSON.parse(savedAreas)
+      : PASSENGER_BUNK_AREAS;
+    if (!Array.isArray(parsedAreas)) {
+      throw new Error("Saved passenger areas are not a list.");
+    }
+    return parsedAreas;
+  } catch (error) {
+    console.error("Unable to load passenger areas for voyage fares.", error);
+    return PASSENGER_BUNK_AREAS;
+  }
 };
 const formatDate = (value) =>
   new Date(value).toLocaleString("en-PH", {
@@ -124,10 +114,15 @@ const createVoyages = (schedules, startDate) =>
     return voyages;
   });
 
-export function Voyages({ currentUser = "Current user" }) {
-  const [schedules, setSchedules] = useState(initialSchedules);
+export function Voyages({ currentUser = "Current user", canEdit = false }) {
+  const [schedules, setSchedules] = useState(loadVoyageSchedules);
+  const [vessels, setVessels] = useState(loadVessels);
+  const [passengerAreas, setPassengerAreas] = useState(() =>
+    loadPassengerAreas(NEW_SCHEDULE_DEFAULTS.vesselId),
+  );
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [newSchedule, setNewSchedule] = useState(emptySchedule);
+  const [newSchedule, setNewSchedule] = useState(NEW_SCHEDULE_DEFAULTS);
+  const [editingScheduleId, setEditingScheduleId] = useState(null);
   const [cancellationRecords, setCancellationRecords] = useState([]);
   const [voyageToCancel, setVoyageToCancel] = useState(null);
   const [cancellationPassword, setCancellationPassword] = useState("");
@@ -137,6 +132,55 @@ export function Voyages({ currentUser = "Current user" }) {
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 60000);
     return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (!canEdit) return;
+    try {
+      saveVoyageSchedules(schedules);
+    } catch (error) {
+      console.error("Unable to save voyage schedules.", error);
+    }
+  }, [canEdit, schedules]);
+
+  useEffect(() => {
+    const passengerAreasStorageKey =
+      getVesselPassengerAreasStorageKey(newSchedule.vesselId);
+    const refreshPassengerAreas = (event) => {
+      if (
+        event.type === "storage" &&
+        event.key !== passengerAreasStorageKey &&
+        !(
+          newSchedule.vesselId === "vessel-1" &&
+          event.key === BUNK_CONFIGURATION_STORAGE_KEY
+        )
+      ) {
+        return;
+      }
+      setPassengerAreas(loadPassengerAreas(newSchedule.vesselId));
+    };
+    window.addEventListener("storage", refreshPassengerAreas);
+    window.addEventListener("passenger-bunks-updated", refreshPassengerAreas);
+    return () => {
+      window.removeEventListener("storage", refreshPassengerAreas);
+      window.removeEventListener(
+        "passenger-bunks-updated",
+        refreshPassengerAreas,
+      );
+    };
+  }, [newSchedule.vesselId]);
+
+  useEffect(() => {
+    const refreshVessels = (event) => {
+      if (event.type === "storage" && event.key !== "deeparted-vessels") return;
+      setVessels(loadVessels());
+    };
+    window.addEventListener("storage", refreshVessels);
+    window.addEventListener("vessels-updated", refreshVessels);
+    return () => {
+      window.removeEventListener("storage", refreshVessels);
+      window.removeEventListener("vessels-updated", refreshVessels);
+    };
   }, []);
 
   const voyages = useMemo(
@@ -164,7 +208,10 @@ export function Voyages({ currentUser = "Current user" }) {
     [voyages, now],
   );
   const getVessel = (vesselId) =>
-    VESSELS.find((vessel) => vessel.id === vesselId) || VESSELS[0];
+    vessels.find((vessel) => vessel.id === vesselId) ||
+    getVesselById(vesselId) ||
+    vessels[0] ||
+    DEFAULT_VESSELS[0];
   const getRoute = (routeId) =>
     MOCK_ROUTES.find((route) => route.id === routeId) || MOCK_ROUTES[0];
   const updateField = (field, value) =>
@@ -172,8 +219,20 @@ export function Voyages({ currentUser = "Current user" }) {
 
   const createSchedule = (event) => {
     event.preventDefault();
+    if (!canEdit) return;
+    if (!passengerAreas.length) {
+      alert("Add a passenger bunk area in Vessel before configuring voyages.");
+      return;
+    }
     if (!newSchedule.days.length) {
       alert("Select at least one operating day.");
+      return;
+    }
+    const hasMissingFare = passengerAreas.some(
+      (area) => !getFareForArea({ fares: newSchedule.fares }, area.id),
+    );
+    if (hasMissingFare) {
+      alert("Enter a ticket price greater than zero for every passenger area.");
       return;
     }
     const departureHour = Number(newSchedule.departureTime.split(":")[0]);
@@ -182,22 +241,52 @@ export function Voyages({ currentUser = "Current user" }) {
       arrivalHour <= departureHour
         ? arrivalHour + 24 - departureHour
         : arrivalHour - departureHour;
-    setSchedules((current) => [
-      {
+    if (editingScheduleId) {
+      setSchedules((current) =>
+        current.map((schedule) =>
+          schedule.id === editingScheduleId
+            ? { ...schedule, fares: newSchedule.fares }
+            : schedule,
+        ),
+      );
+    } else {
+      setSchedules((current) => [
+        {
         ...newSchedule,
         id: `schedule-${Date.now()}`,
         name: getRoute(newSchedule.routeId).name,
         durationHours,
         status: "Active",
-      },
-      ...current,
-    ]);
-    setNewSchedule(emptySchedule);
+        },
+        ...current,
+      ]);
+    }
+    setNewSchedule(NEW_SCHEDULE_DEFAULTS);
+    setEditingScheduleId(null);
     setIsFormOpen(false);
   };
 
+  const editScheduleFares = (schedule) => {
+    if (!canEdit) return;
+    setEditingScheduleId(schedule.id);
+    setPassengerAreas(loadPassengerAreas(schedule.vesselId));
+    setNewSchedule({
+      ...schedule,
+      fares: { ...schedule.fares },
+    });
+    setIsFormOpen(true);
+  };
+
+  const openNewScheduleForm = () => {
+    if (!canEdit) return;
+    setEditingScheduleId(null);
+    setPassengerAreas(loadPassengerAreas(NEW_SCHEDULE_DEFAULTS.vesselId));
+    setNewSchedule(NEW_SCHEDULE_DEFAULTS);
+    setIsFormOpen(true);
+  };
+
   const toggleSchedule = (scheduleId) =>
-    setSchedules((current) =>
+    canEdit && setSchedules((current) =>
       current.map((schedule) =>
         schedule.id === scheduleId
           ? {
@@ -208,6 +297,7 @@ export function Voyages({ currentUser = "Current user" }) {
       ),
     );
   const openCancellation = (voyage) => {
+    if (!canEdit) return;
     setVoyageToCancel(voyage);
     setCancellationPassword("");
     setCancellationError("");
@@ -221,6 +311,7 @@ export function Voyages({ currentUser = "Current user" }) {
 
   const confirmCancellation = (event) => {
     event.preventDefault();
+    if (!canEdit) return;
     if (!cancellationPassword.trim()) {
       setCancellationError("Enter your password to record this cancellation.");
       return;
@@ -246,17 +337,17 @@ export function Voyages({ currentUser = "Current user" }) {
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white mt-1 flex items-center gap-2">
             <CalendarClock className="w-6 h-6 text-blue-600" /> Voyages
           </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-sm text-slate-500 dark:text-github-muted mt-1">
             Schedules generate your upcoming sailings automatically. Edit an
             individual voyage only when operations need an exception.
           </p>
         </div>
-        <button
-          onClick={() => setIsFormOpen(true)}
+        {canEdit && <button
+          onClick={openNewScheduleForm}
           className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-blue-600/20"
         >
           <Plus className="w-4 h-4" /> Create Schedule
-        </button>
+        </button>}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -282,7 +373,7 @@ export function Voyages({ currentUser = "Current user" }) {
         ].map(({ label, value, icon: Icon, tone }) => (
           <div
             key={label}
-            className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-4 shadow-sm flex items-center gap-3"
+            className="bg-white dark:bg-github-panel border border-slate-200 dark:border-github-border p-4 shadow-sm flex items-center gap-3"
           >
             <div className={`p-2.5 ${tone}`}>
               <Icon className="w-5 h-5" />
@@ -291,7 +382,7 @@ export function Voyages({ currentUser = "Current user" }) {
               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                 {value}
               </p>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="text-[11px] text-slate-500 dark:text-github-muted">
                 {label}
               </p>
             </div>
@@ -325,7 +416,7 @@ export function Voyages({ currentUser = "Current user" }) {
             return (
               <article
                 key={schedule.id}
-                className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 shadow-sm p-5"
+                className="bg-white dark:bg-github-panel border border-slate-200 dark:border-github-border shadow-sm p-5"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -343,7 +434,7 @@ export function Voyages({ currentUser = "Current user" }) {
                       {vessel.name} · {vessel.capacity} passenger capacity
                     </p>
                   </div>
-                  <button
+                  {canEdit && <button
                     onClick={() => toggleSchedule(schedule.id)}
                     title={
                       schedule.status === "Active"
@@ -357,9 +448,9 @@ export function Voyages({ currentUser = "Current user" }) {
                     ) : (
                       <Play className="w-4 h-4" />
                     )}
-                  </button>
+                  </button>}
                 </div>
-                <div className="flex flex-wrap items-center gap-2 mt-4 text-xs text-slate-600 dark:text-slate-300">
+                <div className="flex flex-wrap items-center gap-2 mt-4 text-xs text-slate-600 dark:text-github-text">
                   <span className="font-semibold">
                     {route.originCode} {route.origin}
                   </span>
@@ -369,10 +460,10 @@ export function Voyages({ currentUser = "Current user" }) {
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 mt-4">
-                  {DAYS.map((day) => (
+                  {VOYAGE_DAYS.map((day) => (
                     <span
                       key={day.value}
-                      className={`px-2 py-1 text-[10px] font-bold border ${schedule.days.includes(day.value) ? "text-blue-700 bg-blue-500/10 border-blue-500/20" : "text-slate-300 border-slate-100 dark:border-slate-800"}`}
+                      className={`px-2 py-1 text-[10px] font-bold border ${schedule.days.includes(day.value) ? "text-blue-700 bg-blue-500/10 border-blue-500/20" : "text-slate-300 border-slate-100 dark:border-github-border"}`}
                     >
                       {day.label}
                     </span>
@@ -381,6 +472,44 @@ export function Voyages({ currentUser = "Current user" }) {
                     Departs {schedule.departureTime} · {schedule.durationHours}h
                     trip
                   </span>
+                </div>
+                <div className="mt-4 border-t border-slate-100 dark:border-github-border pt-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                      Passenger fares
+                    </p>
+                    {canEdit && <button
+                      type="button"
+                      onClick={() => editScheduleFares(schedule)}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-700"
+                    >
+                      <DollarSign className="h-3.5 w-3.5" />
+                      Set prices
+                    </button>}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {loadPassengerAreas(schedule.vesselId).map((area) => {
+                      const fare = getFareForArea(schedule, area.id);
+                      return (
+                        <span
+                          key={area.id}
+                          className={`border px-2 py-1 text-[10px] font-semibold ${
+                            fare
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
+                              : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+                          }`}
+                        >
+                          {area.accommodation} · {area.label}:{" "}
+                          {fare ? `PHP ${fare.toLocaleString()}` : "Not set"}
+                        </span>
+                      );
+                    })}
+                    {!passengerAreas.length && (
+                      <span className="text-[11px] text-slate-400">
+                        Add passenger areas in Vessel to configure ticket prices.
+                      </span>
+                    )}
+                  </div>
                 </div>
               </article>
             );
@@ -405,11 +534,11 @@ export function Voyages({ currentUser = "Current user" }) {
           return (
             <article
               key={voyage.id}
-              className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 shadow-sm p-5"
+              className="bg-white dark:bg-github-panel border border-slate-200 dark:border-github-border shadow-sm p-5"
             >
               <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5">
                 <div className="flex items-start gap-4 min-w-0">
-                  <div className="p-3 bg-slate-100 dark:bg-slate-800 text-blue-600 shrink-0">
+                  <div className="p-3 bg-slate-100 dark:bg-github-panel text-blue-600 shrink-0">
                     <Ship className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
@@ -429,7 +558,7 @@ export function Voyages({ currentUser = "Current user" }) {
                     <p className="text-[11px] text-slate-400 mt-1">
                       {voyage.reference} · {route.name}
                     </p>
-                    <div className="flex flex-wrap items-center gap-2 mt-3 text-xs text-slate-600 dark:text-slate-300">
+                    <div className="flex flex-wrap items-center gap-2 mt-3 text-xs text-slate-600 dark:text-github-text">
                       <span className="font-semibold">{route.originCode}</span>
                       <ArrowRight className="w-3.5 h-3.5 text-blue-500" />
                       <span className="font-semibold">
@@ -466,25 +595,25 @@ export function Voyages({ currentUser = "Current user" }) {
                     connect here
                   </div>
                 </div>
-                <button
+                {canEdit && <button
                   onClick={() => openCancellation(voyage)}
                   disabled={status === "Completed" || status === "Cancelled"}
                   className="self-start xl:self-center p-2 text-slate-400 hover:text-red-500 disabled:opacity-30"
                   title="Cancel this voyage"
                 >
                   <AlertTriangle className="w-4 h-4" />
-                </button>
+                </button>}
               </div>
             </article>
           );
         })}
       </section>
 
-      {voyageToCancel && (
+      {canEdit && voyageToCancel && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
           <form
             onSubmit={confirmCancellation}
-            className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md p-6 space-y-5"
+            className="bg-white dark:bg-github-panel border border-slate-200 dark:border-github-border shadow-2xl w-full max-w-md p-6 space-y-5"
           >
             <div className="flex items-start gap-3">
               <div className="p-2 bg-red-500/10 text-red-600">
@@ -500,7 +629,7 @@ export function Voyages({ currentUser = "Current user" }) {
                 </p>
               </div>
             </div>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300">
+            <label className="block text-xs font-semibold text-slate-600 dark:text-github-text">
               Confirm your password
               <input
                 autoFocus
@@ -512,7 +641,7 @@ export function Voyages({ currentUser = "Current user" }) {
                   setCancellationError("");
                 }}
                 placeholder="Enter your password"
-                className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
               />
             </label>
             <p className="text-[11px] text-slate-400">
@@ -522,11 +651,11 @@ export function Voyages({ currentUser = "Current user" }) {
             {cancellationError && (
               <p className="text-xs text-red-600">{cancellationError}</p>
             )}
-            <div className="flex justify-end gap-2 border-t border-slate-200 dark:border-slate-800 pt-4">
+            <div className="flex justify-end gap-2 border-t border-slate-200 dark:border-github-border pt-4">
               <button
                 type="button"
                 onClick={closeCancellation}
-                className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300"
+                className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-github-text"
               >
                 Keep Voyage
               </button>
@@ -541,20 +670,23 @@ export function Voyages({ currentUser = "Current user" }) {
         </div>
       )}
 
-      {isFormOpen && (
+      {canEdit && isFormOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
           <form
             onSubmit={createSchedule}
-            className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-xl p-6 space-y-5"
+            className="bg-white dark:bg-github-panel border border-slate-200 dark:border-github-border shadow-2xl w-full max-w-xl p-6 space-y-5"
           >
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-github-border pb-4">
               <div>
                 <h3 className="font-bold text-lg text-slate-900 dark:text-white">
-                  Create Recurring Schedule
+                  {editingScheduleId
+                    ? "Set Passenger Ticket Prices"
+                    : "Create Recurring Schedule"}
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  The system will generate the next 3 weeks of voyages
-                  automatically.
+                  {editingScheduleId
+                    ? "Set the fare for each passenger area configured in Vessel."
+                    : "The system will generate the next 3 weeks of voyages automatically."}
                 </p>
               </div>
               <button
@@ -565,99 +697,147 @@ export function Voyages({ currentUser = "Current user" }) {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                Route
-                <select
-                  value={newSchedule.routeId}
-                  onChange={(event) =>
-                    updateField("routeId", event.target.value)
-                  }
-                  className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-                >
-                  {MOCK_ROUTES.map((route) => (
-                    <option key={route.id} value={route.id}>
-                      {route.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                Vessel
-                <select
-                  value={newSchedule.vesselId}
-                  onChange={(event) =>
-                    updateField("vesselId", event.target.value)
-                  }
-                  className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-                >
-                  {VESSELS.map((vessel) => (
-                    <option key={vessel.id} value={vessel.id}>
-                      {vessel.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="sm:col-span-2">
-                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-2">
-                  Operating days
+            {!editingScheduleId && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <label className="text-xs font-semibold text-slate-600 dark:text-github-text">
+                  Route
+                  <select
+                    value={newSchedule.routeId}
+                    onChange={(event) =>
+                      updateField("routeId", event.target.value)
+                    }
+                    className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
+                  >
+                    {MOCK_ROUTES.map((route) => (
+                      <option key={route.id} value={route.id}>
+                        {route.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-xs font-semibold text-slate-600 dark:text-github-text">
+                  Vessel
+                  <select
+                    value={newSchedule.vesselId}
+                    onChange={(event) => {
+                      updateField("vesselId", event.target.value);
+                      setPassengerAreas(loadPassengerAreas(event.target.value));
+                    }}
+                    className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
+                  >
+                    {vessels.map((vessel) => (
+                      <option key={vessel.id} value={vessel.id}>
+                        {vessel.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="sm:col-span-2">
+                  <p className="text-xs font-semibold text-slate-600 dark:text-github-text mb-2">
+                    Operating days
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {VOYAGE_DAYS.map((day) => (
+                      <label
+                        key={day.value}
+                        className={`cursor-pointer px-3 py-2 border text-xs font-bold ${newSchedule.days.includes(day.value) ? "text-blue-700 bg-blue-500/10 border-blue-500/30" : "text-slate-400 border-slate-200 dark:border-github-border"}`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="sr-only"
+                          checked={newSchedule.days.includes(day.value)}
+                          onChange={() =>
+                            updateField(
+                              "days",
+                              newSchedule.days.includes(day.value)
+                                ? newSchedule.days.filter(
+                                    (value) => value !== day.value,
+                                  )
+                                : [...newSchedule.days, day.value],
+                            )
+                          }
+                        />
+                        {day.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <label className="text-xs font-semibold text-slate-600 dark:text-github-text">
+                  Departure time
+                  <input
+                    required
+                    type="time"
+                    value={newSchedule.departureTime}
+                    onChange={(event) =>
+                      updateField("departureTime", event.target.value)
+                    }
+                    className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
+                  />
+                </label>
+                <label className="text-xs font-semibold text-slate-600 dark:text-github-text">
+                  Arrival time
+                  <input
+                    required
+                    type="time"
+                    value={newSchedule.arrivalTime}
+                    onChange={(event) =>
+                      updateField("arrivalTime", event.target.value)
+                    }
+                    className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
+                  />
+                </label>
+              </div>
+            )}
+            <section className="space-y-3">
+              <div>
+                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                  Ticket prices by passenger area
+                </h4>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Passenger classes and sections come from the Vessel deck plan.
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {DAYS.map((day) => (
+              </div>
+              {passengerAreas.length ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {passengerAreas.map((area) => (
                     <label
-                      key={day.value}
-                      className={`cursor-pointer px-3 py-2 border text-xs font-bold ${newSchedule.days.includes(day.value) ? "text-blue-700 bg-blue-500/10 border-blue-500/30" : "text-slate-400 border-slate-200 dark:border-slate-700"}`}
+                      key={area.id}
+                      className="text-xs font-semibold text-slate-600 dark:text-github-text"
                     >
-                      <input
-                        type="checkbox"
-                        className="sr-only"
-                        checked={newSchedule.days.includes(day.value)}
-                        onChange={() =>
-                          updateField(
-                            "days",
-                            newSchedule.days.includes(day.value)
-                              ? newSchedule.days.filter(
-                                  (value) => value !== day.value,
-                                )
-                              : [...newSchedule.days, day.value],
-                          )
-                        }
-                      />
-                      {day.label}
+                      {area.accommodation} · {area.label}
+                      <div className="mt-1 flex items-center border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel">
+                        <span className="px-3 text-xs text-slate-400">PHP</span>
+                        <input
+                          required
+                          min="0.01"
+                          step="0.01"
+                          type="number"
+                          value={newSchedule.fares?.[area.id] ?? ""}
+                          onChange={(event) =>
+                            updateField("fares", {
+                              ...newSchedule.fares,
+                              [area.id]: event.target.value,
+                            })
+                          }
+                          placeholder="Enter fare"
+                          className="w-full border-0 bg-transparent px-2 py-2 text-sm text-slate-900 outline-none dark:text-white"
+                        />
+                      </div>
                     </label>
                   ))}
                 </div>
-              </div>
-              <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                Departure time
-                <input
-                  required
-                  type="time"
-                  value={newSchedule.departureTime}
-                  onChange={(event) =>
-                    updateField("departureTime", event.target.value)
-                  }
-                  className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-                />
-              </label>
-              <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                Arrival time
-                <input
-                  required
-                  type="time"
-                  value={newSchedule.arrivalTime}
-                  onChange={(event) =>
-                    updateField("arrivalTime", event.target.value)
-                  }
-                  className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-                />
-              </label>
-            </div>
-            <div className="flex justify-end gap-2 border-t border-slate-200 dark:border-slate-800 pt-4">
+              ) : (
+                <p className="border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                  No passenger areas are configured. Add a passenger bunk area
+                  in Vessel before creating a schedule.
+                </p>
+              )}
+            </section>
+            <div className="flex justify-end gap-2 border-t border-slate-200 dark:border-github-border pt-4">
               <button
                 type="button"
                 onClick={() => setIsFormOpen(false)}
-                className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300"
+                className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-github-text"
               >
                 Cancel
               </button>
@@ -665,7 +845,7 @@ export function Voyages({ currentUser = "Current user" }) {
                 type="submit"
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-2"
               >
-                <CheckCircle2 className="w-4 h-4" /> Activate Schedule
+                <CheckCircle2 className="w-4 h-4" />                 {editingScheduleId ? "Save Ticket Prices" : "Activate Schedule"}
               </button>
             </div>
           </form>

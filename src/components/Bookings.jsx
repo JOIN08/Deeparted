@@ -5,9 +5,9 @@ import {
   CreditCard,
   Eye,
   FileText,
+  History,
   Plus,
   Printer,
-  Search,
   Ticket,
   X,
 } from "lucide-react";
@@ -16,31 +16,23 @@ import {
   MOCK_ROUTES,
   PASSENGER_BUNK_AREAS,
 } from "../data/mockData";
+import {
+  VOYAGE_SCHEDULES_STORAGE_KEY,
+  getFareForArea,
+  loadVoyageSchedules,
+} from "../data/voyageSchedules";
+import { APP_ROUTE_PATHS } from "../config/appConfig";
+import {
+  DEFAULT_VESSELS,
+  getVesselPassengerAreasStorageKey,
+  getVesselById,
+  loadVessels,
+} from "../data/vesselStorage";
 import { renderPassengerTicket } from "../data/passengerTicketTemplate";
-
-const VESSELS = [
-  { id: "vessel-1", name: "MV Trans-Asia 12", capacity: 420 },
-  { id: "vessel-2", name: "MV Cebu Star", capacity: 280 },
-];
-
-const SCHEDULES = [
-  {
-    id: "schedule-1",
-    routeId: "route-1",
-    vesselId: "vessel-1",
-    days: [1, 3, 5],
-    departureTime: "18:30",
-    arrivalTime: "11:00",
-  },
-  {
-    id: "schedule-2",
-    routeId: "route-2",
-    vesselId: "vessel-2",
-    days: [2, 4],
-    departureTime: "08:00",
-    arrivalTime: "22:00",
-  },
-];
+import {
+  loadTodayBookings,
+  saveTodayBookings,
+} from "../data/bookingStorage";
 
 const STATUS_STYLES = {
   Held: "text-amber-700 bg-amber-500/10 border-amber-500/20",
@@ -54,19 +46,26 @@ const formatDate = (value) =>
     timeStyle: "short",
   });
 
-const loadBunkAreas = () => {
+const loadBunkAreas = (vesselId) => {
   try {
-    const savedAreas = window.localStorage.getItem(
-      BUNK_CONFIGURATION_STORAGE_KEY,
-    );
-    return savedAreas ? JSON.parse(savedAreas) : PASSENGER_BUNK_AREAS;
-  } catch {
+    const savedAreas =
+      window.localStorage.getItem(
+        getVesselPassengerAreasStorageKey(vesselId),
+      ) ||
+      (vesselId === "vessel-1" &&
+        window.localStorage.getItem(BUNK_CONFIGURATION_STORAGE_KEY));
+    return savedAreas
+      ? JSON.parse(savedAreas)
+      : PASSENGER_BUNK_AREAS;
+  } catch (error) {
+    console.error("Unable to load the selected vessel's passenger areas.", error);
     return PASSENGER_BUNK_AREAS;
   }
 };
 
-const createVoyages = () =>
-  SCHEDULES.flatMap((schedule) => {
+const createVoyages = (schedules) =>
+  schedules.flatMap((schedule) => {
+    if (schedule.status !== "Active") return [];
     const result = [];
     for (let offset = 0; offset < 21; offset += 1) {
       const departure = new Date();
@@ -97,14 +96,20 @@ const createVoyages = () =>
     return result;
   });
 
-export function Bookings({ currentUser = "Current user" }) {
-  const voyages = useMemo(() => createVoyages(), []);
-  const [bookings, setBookings] = useState([]);
+export function Bookings({
+  currentUser = "Current user",
+}) {
+  const [schedules, setSchedules] = useState(loadVoyageSchedules);
+  const [vessels, setVessels] = useState(loadVessels);
+  const voyages = useMemo(() => createVoyages(schedules), [schedules]);
+  const [bookings, setBookings] = useState(loadTodayBookings);
+  const [bookingPage, setBookingPage] = useState("create");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isBedLayoutOpen, setIsBedLayoutOpen] = useState(false);
   const [bookingPreview, setBookingPreview] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [bunkAreas, setBunkAreas] = useState(loadBunkAreas);
+  const [bunkAreas, setBunkAreas] = useState(() =>
+    loadBunkAreas(voyages[0]?.vesselId),
+  );
   const accommodations = bunkAreas.map((area) => ({
     value: area.id,
     label: area.label,
@@ -124,7 +129,6 @@ export function Bookings({ currentUser = "Current user" }) {
     contact: "",
     quantity: 1,
     paymentMethod: "Cash",
-    amount: "1500",
     areaId: accommodations[0]?.value || "",
     bunkPreference: "Random",
     bunkId: "",
@@ -133,25 +137,124 @@ export function Bookings({ currentUser = "Current user" }) {
     ...emptyBooking,
     voyageId: voyages[0]?.id || "",
   }));
+  const selectedVoyage = voyages.find(
+    (voyage) => voyage.id === newBooking.voyageId,
+  );
 
   useEffect(() => {
-    const refreshBunks = () => setBunkAreas(loadBunkAreas());
+    try {
+      saveTodayBookings(bookings);
+    } catch (error) {
+      console.error("Unable to save booking records.", error);
+    }
+  }, [bookings]);
+
+  useEffect(() => {
+    const refreshTodayBookings = (event) => {
+      if (!event.key?.startsWith("deeparted-bookings-day:")) return;
+      try {
+        setBookings(loadTodayBookings());
+      } catch (error) {
+        console.error("Unable to refresh today's bookings.", error);
+      }
+    };
+    window.addEventListener("storage", refreshTodayBookings);
+    return () => window.removeEventListener("storage", refreshTodayBookings);
+  }, []);
+
+  useEffect(() => {
+    const refreshVessels = (event) => {
+      if (event.type === "storage" && event.key !== "deeparted-vessels") return;
+      setVessels(loadVessels());
+    };
+    window.addEventListener("storage", refreshVessels);
+    window.addEventListener("vessels-updated", refreshVessels);
+    return () => {
+      window.removeEventListener("storage", refreshVessels);
+      window.removeEventListener("vessels-updated", refreshVessels);
+    };
+  }, []);
+
+  useEffect(() => {
+    const refreshBunks = (event) => {
+      if (
+        event.type === "storage" &&
+        event.key !==
+          getVesselPassengerAreasStorageKey(selectedVoyage?.vesselId) &&
+        !(
+          selectedVoyage?.vesselId === "vessel-1" &&
+          event.key === BUNK_CONFIGURATION_STORAGE_KEY
+        )
+      ) {
+        return;
+      }
+      setBunkAreas(loadBunkAreas(selectedVoyage?.vesselId));
+    };
     window.addEventListener("storage", refreshBunks);
     window.addEventListener("passenger-bunks-updated", refreshBunks);
     return () => {
       window.removeEventListener("storage", refreshBunks);
       window.removeEventListener("passenger-bunks-updated", refreshBunks);
     };
+  }, [selectedVoyage?.vesselId]);
+
+  useEffect(() => {
+    const refreshSchedules = (event) => {
+      if (
+        event.type === "storage" &&
+        event.key !== VOYAGE_SCHEDULES_STORAGE_KEY
+      ) {
+        return;
+      }
+      setSchedules(loadVoyageSchedules());
+    };
+    window.addEventListener("storage", refreshSchedules);
+    window.addEventListener("voyage-schedules-updated", refreshSchedules);
+    return () => {
+      window.removeEventListener("storage", refreshSchedules);
+      window.removeEventListener("voyage-schedules-updated", refreshSchedules);
+    };
   }, []);
 
   const getRoute = (routeId) =>
     MOCK_ROUTES.find((route) => route.id === routeId) || MOCK_ROUTES[0];
   const getVessel = (vesselId) =>
-    VESSELS.find((vessel) => vessel.id === vesselId) || VESSELS[0];
+    vessels.find((vessel) => vessel.id === vesselId) ||
+    getVesselById(vesselId) ||
+    vessels[0] ||
+    DEFAULT_VESSELS[0];
   const getVoyage = (voyageId) =>
     voyages.find((voyage) => voyage.id === voyageId);
+  const getBookingVoyage = (booking) => {
+    const currentVoyage = getVoyage(booking.voyageId);
+    if (currentVoyage) return currentVoyage;
+    if (booking.voyageSnapshot) return booking.voyageSnapshot;
+
+    const schedule = schedules.find((item) =>
+      booking.voyageId.startsWith(`${item.id}-`),
+    );
+    if (!schedule) return null;
+    const departureDate = booking.voyageId.slice(schedule.id.length + 1);
+    const departure = new Date(`${departureDate}T${schedule.departureTime}:00`);
+    if (Number.isNaN(departure.getTime())) return null;
+    const arrival = new Date(departure);
+    const [arrivalHour, arrivalMinute] = schedule.arrivalTime
+      .split(":")
+      .map(Number);
+    const [departureHour] = schedule.departureTime.split(":").map(Number);
+    arrival.setDate(arrival.getDate() + (arrivalHour <= departureHour ? 1 : 0));
+    arrival.setHours(arrivalHour, arrivalMinute, 0, 0);
+    return {
+      id: booking.voyageId,
+      scheduleId: schedule.id,
+      departure: departure.toISOString(),
+      arrival: arrival.toISOString(),
+      routeId: schedule.routeId,
+      vesselId: schedule.vesselId,
+    };
+  };
   const getTicketHtml = (booking) => {
-    const voyage = getVoyage(booking.voyageId);
+    const voyage = getBookingVoyage(booking);
     const route = getRoute(voyage.routeId);
     const vessel = getVessel(voyage.vesselId);
     return renderPassengerTicket({
@@ -187,7 +290,13 @@ export function Bookings({ currentUser = "Current user" }) {
   };
   const updateField = (field, value) =>
     setNewBooking((current) => ({ ...current, [field]: value }));
-  const selectedVoyage = getVoyage(newBooking.voyageId);
+  const selectedSchedule = schedules.find(
+    (schedule) => schedule.id === selectedVoyage?.scheduleId,
+  );
+  const ticketFare = getFareForArea(selectedSchedule, newBooking.areaId);
+  const bookingTotal = ticketFare
+    ? ticketFare * Number(newBooking.quantity || 0)
+    : null;
   const getSold = (voyageId) =>
     bookings
       .filter(
@@ -210,15 +319,36 @@ export function Bookings({ currentUser = "Current user" }) {
   const matchingBunks = ["Random", "Manual"].includes(newBooking.bunkPreference)
     ? availableBunks
     : availableBunks.filter((bunk) => bunk.level === newBooking.bunkPreference);
-  const filteredBookings = bookings.filter((booking) =>
-    `${booking.reference} ${booking.passengerName}`
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase()),
+  const bookingCounts = useMemo(
+    () =>
+      bookings.reduce(
+        (counts, booking) => {
+          counts[booking.status] = (counts[booking.status] || 0) + 1;
+          return counts;
+        },
+        { Held: 0, Confirmed: 0, "Ticket Issued": 0 },
+      ),
+    [bookings],
   );
-
+  const workBookings = useMemo(
+    () => bookings.filter((booking) => ["Held", "Confirmed"].includes(booking.status)),
+    [bookings],
+  );
+  const issuedBookings = useMemo(
+    () => bookings.filter((booking) => booking.status === "Ticket Issued"),
+    [bookings],
+  );
   const createBooking = (event) => {
     event.preventDefault();
     if (!selectedVoyage || !newBooking.passengerName.trim()) return;
+    if (!Number.isInteger(Number(newBooking.quantity)) || Number(newBooking.quantity) < 1) {
+      alert("Enter at least one passenger.");
+      return;
+    }
+    if (!ticketFare) {
+      alert("Set a ticket price for this passenger area in Voyages first.");
+      return;
+    }
     if (
       getSold(selectedVoyage.id) + Number(newBooking.quantity) >
       getVessel(selectedVoyage.vesselId).capacity
@@ -250,6 +380,11 @@ export function Bookings({ currentUser = "Current user" }) {
     const timestamp = Date.now();
     const booking = {
       ...newBooking,
+      quantity: Number(newBooking.quantity),
+      unitPrice: ticketFare,
+      amount: bookingTotal,
+      voyageSnapshot: selectedVoyage,
+      createdAt: new Date(timestamp).toISOString(),
       bunkId: assignedBunk.id,
       bunkLabel: assignedBunk.label,
       accommodation: assignedBunk.accommodation,
@@ -262,8 +397,10 @@ export function Bookings({ currentUser = "Current user" }) {
       ticketNumber: "",
     };
     setBookings((current) => [booking, ...current]);
-    setBookingPreview(booking);
-    setNewBooking({ ...emptyBooking, voyageId: voyages[0]?.id || "" });
+    setNewBooking({
+      ...emptyBooking,
+      voyageId: voyages[0]?.id || "",
+    });
     setIsFormOpen(false);
   };
 
@@ -281,20 +418,29 @@ export function Bookings({ currentUser = "Current user" }) {
           : booking,
       ),
     );
-  const issueTicket = (bookingId) =>
+  const issueTicket = (booking) => {
+    if (booking.status !== "Confirmed") return null;
+    // Generate ticket identifiers only when the operator issues the ticket.
+    // eslint-disable-next-line react-hooks/purity
+    const issuedAt = Date.now();
+    const issuedBooking = {
+      ...booking,
+      status: "Ticket Issued",
+      ticketNumber: `TKT-${issuedAt.toString().slice(-8)}`,
+      issuedAt: new Date(issuedAt).toISOString(),
+      issuedBy: currentUser,
+    };
     setBookings((current) =>
-      current.map((booking) =>
-        booking.id === bookingId && booking.status === "Confirmed"
-          ? {
-              ...booking,
-              status: "Ticket Issued",
-              ticketNumber: `TKT-${Date.now().toString().slice(-8)}`,
-              issuedAt: new Date().toISOString(),
-              issuedBy: currentUser,
-            }
-          : booking,
+      current.map((item) =>
+        item.id === booking.id ? issuedBooking : item,
       ),
     );
+    return issuedBooking;
+  };
+  const issueAndPrintTicket = (booking) => {
+    const issuedBooking = issueTicket(booking);
+    if (issuedBooking) printTicket(issuedBooking);
+  };
   const issuedTicketActions = (booking) =>
     booking.status === "Ticket Issued" && (
       <>
@@ -323,33 +469,156 @@ export function Bookings({ currentUser = "Current user" }) {
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white mt-1 flex items-center gap-2">
             <Ticket className="w-6 h-6 text-blue-600" /> Bookings
           </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-sm text-slate-500 dark:text-github-muted mt-1">
             Reserve capacity first, record payment second, and issue the ticket
             only after confirmation.
           </p>
         </div>
-        <button
-          onClick={() => setIsFormOpen(true)}
-          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-2"
+        <a
+          href={APP_ROUTE_PATHS.bookingRecords}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-github-border dark:bg-github-panel dark:text-slate-200 dark:hover:bg-slate-700"
         >
-          <Plus className="w-4 h-4" /> Create Booking
-        </button>
+          <History className="h-4 w-4" /> Search Past Records
+        </a>
       </div>
+
+      <nav
+        aria-label="Booking pages"
+        className="flex flex-wrap gap-2 border-b border-slate-200 dark:border-github-border"
+      >
+        {[
+          ["create", "Today's Workflow"],
+          [
+            "tickets",
+            `Issued Tickets (${bookingCounts["Ticket Issued"]})`,
+          ],
+        ].map(([page, label]) => (
+          <button
+            key={page}
+            type="button"
+            onClick={() => setBookingPage(page)}
+            aria-current={bookingPage === page ? "page" : undefined}
+            className={`border-b-2 px-3 py-2 text-xs font-bold transition-colors ${
+              bookingPage === page
+                ? "border-teal-600 text-teal-700 dark:text-teal-300"
+                : "border-transparent text-slate-500 hover:text-slate-800 dark:text-github-muted dark:hover:text-white"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {["Held", "Confirmed", "Ticket Issued"].map((status) => (
           <div
             key={status}
-            className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-4"
+            className="bg-white dark:bg-github-panel border border-slate-200 dark:border-github-border p-4"
           >
             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-              {bookings.filter((booking) => booking.status === status).length}
+              {bookingCounts[status]}
             </p>
-            <p className="text-[11px] text-slate-500">{status} bookings</p>
+            <p className="text-[11px] text-slate-500">
+              {status} bookings today
+            </p>
           </div>
         ))}
       </div>
 
+      {bookingPage === "create" && (
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h3 className="font-bold text-slate-900 dark:text-white">
+                Create and complete bookings
+              </h3>
+              <p className="mt-1 text-xs text-slate-500 dark:text-github-muted">
+                Hold capacity, record payment here, then issue and print the ticket.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsFormOpen(true)}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 !text-white text-xs font-bold flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" /> Hold Capacity
+            </button>
+          </div>
+
+          {workBookings.length === 0 ? (
+            <div className="border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500 dark:border-github-border dark:bg-github-panel dark:text-github-muted">
+              No bookings need payment or ticketing. Hold capacity to start a new booking.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {workBookings.map((booking) => {
+                  const voyage = getBookingVoyage(booking);
+                  const route = getRoute(voyage.routeId);
+                  return (
+                    <article
+                      key={booking.id}
+                      className="flex flex-col justify-between gap-4 border border-slate-200 bg-white p-4 dark:border-github-border dark:bg-github-panel sm:flex-row sm:items-center"
+                    >
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h4 className="font-bold text-slate-900 dark:text-white">
+                            {booking.passengerName}
+                          </h4>
+                          <span
+                            className={`border px-2 py-0.5 text-[10px] font-bold uppercase ${STATUS_STYLES[booking.status]}`}
+                          >
+                            {booking.status}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-github-muted">
+                          {booking.reference} · {route.name} · {formatDate(voyage.departure)}
+                        </p>
+                        <p className="mt-1 text-xs font-semibold text-slate-700 dark:text-slate-200">
+                          PHP {Number(booking.amount).toLocaleString()} · {booking.paymentMethod}
+                        </p>
+                        {booking.status === "Confirmed" && (
+                          <p className="mt-2 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                            Payment recorded. Issue the ticket to print it or find it in Issued Tickets.
+                          </p>
+                        )}
+                      </div>
+                      {booking.status === "Held" ? (
+                        <button
+                          type="button"
+                          onClick={() => recordPayment(booking.id)}
+                          className="shrink-0 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 !text-white text-xs font-bold flex items-center justify-center gap-1.5"
+                        >
+                          <CreditCard className="w-3.5 h-3.5" /> Record Payment
+                        </button>
+                      ) : (
+                        <div className="flex shrink-0 flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => issueTicket(booking)}
+                            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 !text-white text-xs font-bold flex items-center justify-center gap-1.5"
+                          >
+                            <FileText className="w-3.5 h-3.5" /> Issue Ticket
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => issueAndPrintTicket(booking)}
+                            className="px-3 py-2 bg-teal-700 hover:bg-teal-800 !text-white text-xs font-bold flex items-center justify-center gap-1.5"
+                          >
+                            <Printer className="w-3.5 h-3.5" /> Issue &amp; Print
+                          </button>
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
+            </div>
+          )}
+        </section>
+      )}
+
+      {bookingPage === "create" && (
       <section className="space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
@@ -360,15 +629,6 @@ export function Bookings({ currentUser = "Current user" }) {
               Bookings reserve seats against one specific voyage.
             </p>
           </div>
-          <div className="relative w-full sm:w-64">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search booking..."
-              className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-            />
-          </div>
         </div>
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {voyages.slice(0, 8).map((voyage) => {
@@ -378,7 +638,7 @@ export function Bookings({ currentUser = "Current user" }) {
             return (
               <article
                 key={voyage.id}
-                className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-5 shadow-sm"
+                className="bg-white dark:bg-github-panel border border-slate-200 dark:border-github-border p-5 shadow-sm"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -393,7 +653,7 @@ export function Bookings({ currentUser = "Current user" }) {
                     {vessel.capacity - sold} available
                   </span>
                 </div>
-                <div className="flex items-center gap-2 mt-4 text-xs text-slate-600 dark:text-slate-300">
+                <div className="flex items-center gap-2 mt-4 text-xs text-slate-600 dark:text-github-text">
                   <span className="font-semibold">{route.originCode}</span>
                   <ArrowRight className="w-3.5 h-3.5 text-blue-500" />
                   <span className="font-semibold">{route.destinationCode}</span>
@@ -406,79 +666,9 @@ export function Bookings({ currentUser = "Current user" }) {
           })}
         </div>
       </section>
+      )}
 
-      <section className="space-y-3">
-        <div>
-          <h3 className="font-bold text-slate-900 dark:text-white">
-            Booking records
-          </h3>
-        </div>
-        {filteredBookings.length === 0 ? (
-          <div className="bg-white dark:bg-[#0f172a] border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center text-sm text-slate-500">
-            No bookings yet. Create a booking to reserve voyage capacity.
-          </div>
-        ) : (
-          filteredBookings.map((booking) => {
-            const voyage = getVoyage(booking.voyageId);
-            const route = getRoute(voyage.routeId);
-            return (
-              <article
-                key={booking.id}
-                className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-5 shadow-sm"
-              >
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h4 className="font-bold text-slate-900 dark:text-white">
-                        {booking.passengerName}
-                      </h4>
-                      <span
-                        className={`px-2 py-0.5 border text-[10px] font-bold uppercase ${STATUS_STYLES[booking.status]}`}
-                      >
-                        {booking.status}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      {booking.reference} · {route.name} · {booking.quantity}{" "}
-                      passenger(s) · {booking.section} · {booking.bunkLabel}
-                    </p>
-                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-2">
-                      {formatDate(voyage.departure)} · Created by{" "}
-                      {booking.createdBy}
-                    </p>
-                    {booking.ticketNumber && (
-                      <p className="text-xs text-emerald-600 mt-1">
-                        Ticket {booking.ticketNumber} · Issued by{" "}
-                        {booking.issuedBy}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {booking.status === "Held" && (
-                      <button
-                        onClick={() => recordPayment(booking.id)}
-                        className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 !text-white text-xs font-bold flex items-center gap-1.5"
-                      >
-                        <CreditCard className="w-3.5 h-3.5" /> Record Payment
-                      </button>
-                    )}
-                    {booking.status === "Confirmed" && (
-                      <button
-                        onClick={() => issueTicket(booking.id)}
-                        className="px-3 py-2 bg-blue-600 hover:bg-blue-700 !text-white text-xs font-bold flex items-center gap-1.5"
-                      >
-                        <FileText className="w-3.5 h-3.5" /> Issue Ticket
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </article>
-            );
-          })
-        )}
-      </section>
-
-      {bookings.some((booking) => booking.status === "Ticket Issued") && (
+      {bookingPage === "tickets" && (
         <section className="space-y-3">
           <div>
             <h3 className="font-bold text-slate-900 dark:text-white">
@@ -489,12 +679,14 @@ export function Bookings({ currentUser = "Current user" }) {
             </p>
           </div>
           <div className="space-y-2">
-            {bookings
-              .filter((booking) => booking.status === "Ticket Issued")
-              .map((booking) => (
+            {issuedBookings.length === 0 ? (
+              <div className="border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500 dark:border-github-border dark:bg-github-panel dark:text-github-muted">
+                No tickets have been issued yet.
+              </div>
+            ) : issuedBookings.map((booking) => (
                 <div
                   key={`issued-${booking.id}`}
-                  className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  className="bg-white dark:bg-github-panel border border-slate-200 dark:border-github-border p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                 >
                   <div>
                     <p className="text-sm font-bold text-slate-900 dark:text-white">
@@ -503,6 +695,10 @@ export function Bookings({ currentUser = "Current user" }) {
                     <p className="text-xs text-slate-500">
                       {booking.passengerName} · {booking.reference} · Issued by{" "}
                       {booking.issuedBy}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {getRoute(getBookingVoyage(booking).routeId).name} ·{" "}
+                      {formatDate(getBookingVoyage(booking).departure)}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -518,9 +714,9 @@ export function Bookings({ currentUser = "Current user" }) {
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
           <form
             onSubmit={createBooking}
-            className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-xl p-6 space-y-5"
+            className="max-h-[90vh] w-full max-w-xl overflow-y-auto border border-slate-200 bg-white p-6 space-y-5 shadow-2xl dark:border-github-border dark:bg-github-panel"
           >
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-github-border pb-4">
               <div>
                 <h3 className="font-bold text-lg text-slate-900 dark:text-white">
                   Create Booking
@@ -538,15 +734,30 @@ export function Bookings({ currentUser = "Current user" }) {
               </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 sm:col-span-2">
+              <label className="text-xs font-semibold text-slate-600 dark:text-github-text sm:col-span-2">
                 Voyage
                 <select
                   required
                   value={newBooking.voyageId}
-                  onChange={(event) =>
-                    updateField("voyageId", event.target.value)
-                  }
-                  className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  onChange={(event) => {
+                    const voyageId = event.target.value;
+                    const nextVoyage = voyages.find(
+                      (voyage) => voyage.id === voyageId,
+                    );
+                    const areas = loadBunkAreas(nextVoyage?.vesselId);
+                    setBunkAreas(areas);
+                    setNewBooking((current) => ({
+                      ...current,
+                      voyageId,
+                      areaId: areas.some(
+                        (area) => area.id === current.areaId,
+                      )
+                        ? current.areaId
+                        : areas[0]?.id || "",
+                      bunkId: "",
+                    }));
+                  }}
+                  className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
                 >
                   {voyages.map((voyage) => (
                     <option key={voyage.id} value={voyage.id}>
@@ -556,7 +767,7 @@ export function Bookings({ currentUser = "Current user" }) {
                   ))}
                 </select>
               </label>
-              <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 sm:col-span-2">
+              <label className="text-xs font-semibold text-slate-600 dark:text-github-text sm:col-span-2">
                 Passenger name
                 <input
                   required
@@ -565,10 +776,10 @@ export function Bookings({ currentUser = "Current user" }) {
                     updateField("passengerName", event.target.value)
                   }
                   placeholder="Full passenger name"
-                  className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
                 />
               </label>
-              <div className="sm:col-span-2 border border-slate-200 dark:border-slate-700 p-4 space-y-4">
+              <div className="sm:col-span-2 border border-slate-200 dark:border-github-border p-4 space-y-4">
                 <div>
                   <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
                     Accommodation section
@@ -578,7 +789,7 @@ export function Bookings({ currentUser = "Current user" }) {
                     assigns a bed automatically.
                   </p>
                 </div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300">
+                <label className="block text-xs font-semibold text-slate-600 dark:text-github-text">
                   Section
                   <select
                     value={newBooking.areaId}
@@ -586,20 +797,20 @@ export function Bookings({ currentUser = "Current user" }) {
                       updateField("areaId", event.target.value);
                       updateField("bunkId", "");
                     }}
-                    className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                    className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
                   >
                     {accommodations.map((accommodation) => (
                       <option
                         key={accommodation.value}
                         value={accommodation.value}
                       >
-                        {accommodation.label} · {accommodation.description}
+                        {accommodation.description} · {accommodation.label}
                       </option>
                     ))}
                   </select>
                 </label>
                 <div className="grid grid-cols-3 gap-2">
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 col-span-2">
+                  <label className="text-xs font-semibold text-slate-600 dark:text-github-text col-span-2">
                     Bed preference
                     <select
                       value={newBooking.bunkPreference}
@@ -607,7 +818,7 @@ export function Bookings({ currentUser = "Current user" }) {
                         updateField("bunkPreference", event.target.value);
                         updateField("bunkId", "");
                       }}
-                      className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                      className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
                     >
                       <option value="Random">Random</option>
                       <option value="Lower">Lower</option>
@@ -620,7 +831,7 @@ export function Bookings({ currentUser = "Current user" }) {
                   </div>
                 </div>
                 {newBooking.bunkPreference === "Manual" ? (
-                  <div className="flex items-center justify-between gap-3 border border-slate-200 dark:border-slate-700 p-3">
+                  <div className="flex items-center justify-between gap-3 border border-slate-200 dark:border-github-border p-3">
                     <div>
                       <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
                         Selected bed
@@ -646,7 +857,7 @@ export function Bookings({ currentUser = "Current user" }) {
                   </p>
                 )}
               </div>
-              <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <label className="text-xs font-semibold text-slate-600 dark:text-github-text">
                 Contact number
                 <input
                   required
@@ -655,10 +866,10 @@ export function Bookings({ currentUser = "Current user" }) {
                     updateField("contact", event.target.value)
                   }
                   placeholder="09xx xxx xxxx"
-                  className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
                 />
               </label>
-              <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <label className="text-xs font-semibold text-slate-600 dark:text-github-text">
                 Passengers
                 <input
                   required
@@ -666,19 +877,19 @@ export function Bookings({ currentUser = "Current user" }) {
                   type="number"
                   value={newBooking.quantity}
                   onChange={(event) =>
-                    updateField("quantity", event.target.value)
+                    updateField("quantity", Number(event.target.value))
                   }
-                  className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
                 />
               </label>
-              <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <label className="text-xs font-semibold text-slate-600 dark:text-github-text">
                 Payment method
                 <select
                   value={newBooking.paymentMethod}
                   onChange={(event) =>
                     updateField("paymentMethod", event.target.value)
                   }
-                  className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
                 >
                   <option>Cash</option>
                   <option>Bank transfer</option>
@@ -686,30 +897,38 @@ export function Bookings({ currentUser = "Current user" }) {
                   <option>Online payment</option>
                 </select>
               </label>
-              <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                Amount
-                <input
-                  required
-                  min="0"
-                  type="number"
-                  value={newBooking.amount}
-                  onChange={(event) =>
-                    updateField("amount", event.target.value)
-                  }
-                  className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-                />
-              </label>
+              <div className="sm:col-span-2 border border-blue-200 bg-blue-50 p-3 dark:border-github-border dark:bg-github-raised">
+                {ticketFare ? (
+                  <>
+                    <p className="text-xs font-semibold text-blue-900 dark:text-blue-200">
+                      Ticket fare: PHP {ticketFare.toLocaleString()} per
+                      passenger
+                    </p>
+                    <p className="mt-1 text-[11px] text-blue-800 dark:text-blue-300">
+                      {newBooking.quantity} passenger
+                      {Number(newBooking.quantity) === 1 ? "" : "s"} · Total
+                      payment: PHP {bookingTotal.toLocaleString()}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-xs font-semibold text-amber-800 dark:text-amber-200">
+                    No price is set for this passenger area on the selected
+                    voyage. Set it in Voyages before holding capacity.
+                  </p>
+                )}
+              </div>
             </div>
-            <div className="flex justify-end gap-2 border-t border-slate-200 dark:border-slate-800 pt-4">
+            <div className="flex justify-end gap-2 border-t border-slate-200 dark:border-github-border pt-4">
               <button
                 type="button"
                 onClick={() => setIsFormOpen(false)}
-                className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300"
+                className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-github-text"
               >
                 Cancel
               </button>
               <button
                 type="submit"
+                disabled={!ticketFare || !selectedVoyage}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 !text-white text-xs font-bold flex items-center gap-2"
               >
                 <CheckCircle2 className="w-4 h-4" /> Hold Capacity
@@ -720,8 +939,8 @@ export function Bookings({ currentUser = "Current user" }) {
       )}
       {isBedLayoutOpen && (
         <div className="fixed inset-0 z-[60] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 shadow-2xl w-[95vw] h-[90vh] p-6 flex flex-col space-y-4 relative overflow-hidden">
-            <div className="flex items-start justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-3 shrink-0">
+          <div className="bg-white dark:bg-github-panel border border-slate-200 dark:border-github-border shadow-2xl w-[95vw] h-[90vh] p-6 flex flex-col space-y-4 relative overflow-hidden">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 dark:border-github-border pb-3 shrink-0">
               <div>
                 <h3 className="font-bold text-lg text-slate-900 dark:text-white">
                   Choose a bed
@@ -741,7 +960,7 @@ export function Bookings({ currentUser = "Current user" }) {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="flex-1 overflow-auto border-2 border-slate-300 dark:border-slate-800 bg-slate-950 relative shadow-inner">
+            <div className="flex-1 overflow-auto border-2 border-slate-300 dark:border-github-border bg-slate-950 relative shadow-inner">
               <div className="w-[1400px] h-[900px] relative select-none">
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#334155_1px,transparent_1px),linear-gradient(to_bottom,#334155_1px,transparent_1px)] bg-[size:20px_20px] opacity-40 pointer-events-none" />
                 {availableBunks.map((bunk) => {
@@ -800,14 +1019,14 @@ export function Bookings({ currentUser = "Current user" }) {
       )}
       {bookingPreview && (
         <div className="fixed inset-0 z-[70] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-2xl p-6 space-y-5">
-            <div className="flex items-start gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+          <div className="bg-white dark:bg-github-panel border border-slate-200 dark:border-github-border shadow-2xl w-full max-w-2xl p-6 space-y-5">
+            <div className="flex items-start gap-3 border-b border-slate-200 dark:border-github-border pb-4">
               <div className="p-2 bg-blue-500/10 text-blue-600">
                 <Ticket className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="font-bold text-lg text-slate-900 dark:text-white">
-                  Review booking ticket
+                  Ticket preview
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
                   This preview uses the Passenger Ticket & Boarding Pass report
@@ -821,38 +1040,21 @@ export function Bookings({ currentUser = "Current user" }) {
               }}
             />
             <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setBookings((current) =>
-                    current.filter(
-                      (booking) => booking.id !== bookingPreview.id,
-                    ),
-                  );
-                  setNewBooking({
-                    voyageId: bookingPreview.voyageId,
-                    passengerName: bookingPreview.passengerName,
-                    contact: bookingPreview.contact,
-                    quantity: bookingPreview.quantity,
-                    paymentMethod: bookingPreview.paymentMethod,
-                    amount: bookingPreview.amount,
-                    areaId: bookingPreview.areaId,
-                    bunkPreference: bookingPreview.bunkPreference,
-                    bunkId: bookingPreview.bunkId,
-                  });
-                  setBookingPreview(null);
-                  setIsFormOpen(true);
-                }}
-                className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300"
-              >
-                Edit booking
-              </button>
+              {bookingPreview.status === "Ticket Issued" && (
+                <button
+                  type="button"
+                  onClick={() => printTicket(bookingPreview)}
+                  className="px-4 py-2 bg-teal-700 hover:bg-teal-800 !text-white text-xs font-bold"
+                >
+                  Print Ticket
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setBookingPreview(null)}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 !text-white text-xs font-bold"
               >
-                Continue to payment
+                Close
               </button>
             </div>
           </div>

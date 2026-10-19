@@ -246,12 +246,12 @@ export function Reports() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white dark:bg-[#0f172a] p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between gap-4">
+      <div className="bg-white dark:bg-github-panel p-6 border border-slate-200 dark:border-github-border shadow-sm flex items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <FileText className="w-6 h-6 text-blue-500" /> Report & Document Generator
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 dark:text-github-muted mt-1">
             Design print-ready templates for tickets, boarding passes, and monthly earning reports.
           </p>
         </div>
@@ -269,7 +269,7 @@ export function Reports() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveView('list')}
-              className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold"
+              className="px-3 py-1.5 bg-slate-100 dark:bg-github-panel text-slate-700 dark:text-github-text text-xs font-bold"
             >
               Back to List
             </button>
@@ -293,7 +293,7 @@ export function Reports() {
               <>
                 <button
                   onClick={() => setActiveView('editor')}
-                  className="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white text-xs font-bold flex items-center gap-1.5"
+                  className="px-3 py-1.5 bg-slate-200 dark:bg-github-raised text-slate-800 dark:text-white text-xs font-bold flex items-center gap-1.5"
                 >
                   <Edit3 className="w-3.5 h-3.5" /> Back to Editor
                 </button>
@@ -315,7 +315,7 @@ export function Reports() {
           {reports.map((rep) => (
             <div
               key={rep.id}
-              className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-5 shadow-sm flex flex-col justify-between space-y-4"
+              className="bg-white dark:bg-github-panel border border-slate-200 dark:border-github-border p-5 shadow-sm flex flex-col justify-between space-y-4"
             >
               <div>
                 <div className="flex items-center justify-between gap-2">
@@ -325,14 +325,14 @@ export function Reports() {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => editReport(rep)}
-                      className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+                      className="p-1 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-500"
                       title="Edit Template"
                     >
                       <Edit3 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => deleteReport(rep.id)}
-                      className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-red-500"
+                      className="p-1 hover:bg-slate-100 dark:hover:bg-github-raised text-red-500"
                       title="Delete"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -344,7 +344,7 @@ export function Reports() {
                 </h3>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+              <div className="pt-3 border-t border-slate-100 dark:border-github-border flex items-center justify-between text-xs">
                 <button
                   onClick={() => editReport(rep)}
                   className="text-blue-500 hover:underline font-semibold"
@@ -362,7 +362,7 @@ export function Reports() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
           {/* Left Panel: Variable Palette */}
-          <div className="lg:col-span-4 bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-4 shadow-sm space-y-4 max-h-[750px] overflow-y-auto">
+          <div className="lg:col-span-4 bg-white dark:bg-github-panel border border-slate-200 dark:border-github-border p-4 shadow-sm space-y-4 max-h-[750px] overflow-y-auto">
             <div>
               <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-blue-500" /> Insert Variables
@@ -385,7 +385,7 @@ export function Reports() {
                         draggable
                         onDragStart={(e) => handleDragStart(e, v.tag)}
                         onClick={() => insertVariable(v.tag)}
-                        className="text-[11px] font-mono bg-slate-100 dark:bg-slate-800 hover:bg-blue-500/10 hover:border-blue-500/40 hover:text-blue-500 border border-slate-200 dark:border-slate-700 px-2 py-1 flex items-center gap-1 cursor-grab active:cursor-grabbing text-slate-700 dark:text-slate-300 transition-colors"
+                        className="text-[11px] font-mono bg-slate-100 dark:bg-github-panel hover:bg-blue-500/10 hover:border-blue-500/40 hover:text-blue-500 border border-slate-200 dark:border-github-border px-2 py-1 flex items-center gap-1 cursor-grab active:cursor-grabbing text-slate-700 dark:text-github-text transition-colors"
                       >
                         <GripVertical className="w-3 h-3 text-slate-400 shrink-0" />
                         {v.label}
@@ -401,7 +401,7 @@ export function Reports() {
           <div className="lg:col-span-8 space-y-3">
             
             {/* Top Toolbar */}
-            <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-2 shadow-sm flex flex-wrap items-center gap-2">
+            <div className="bg-white dark:bg-github-panel border border-slate-200 dark:border-github-border p-2 shadow-sm flex flex-wrap items-center gap-2">
               
               {/* Document Title */}
               <input
@@ -409,50 +409,50 @@ export function Reports() {
                 value={currentReport.title}
                 onChange={(e) => setCurrentReport({ ...currentReport, title: e.target.value })}
                 placeholder="Template Title..."
-                className="px-2 py-1 text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white mr-2 flex-1"
+                className="px-2 py-1 text-xs font-bold border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white mr-2 flex-1"
               />
 
               {/* Formatting Actions */}
-              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
-                <button onClick={() => executeCommand('bold')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200" title="Bold">
+              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-github-border pl-2">
+                <button onClick={() => executeCommand('bold')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-700 dark:text-slate-200" title="Bold">
                   <Bold className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => executeCommand('italic')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200" title="Italic">
+                <button onClick={() => executeCommand('italic')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-700 dark:text-slate-200" title="Italic">
                   <Italic className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => executeCommand('underline')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200" title="Underline">
+                <button onClick={() => executeCommand('underline')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-700 dark:text-slate-200" title="Underline">
                   <Underline className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
-                <button onClick={() => executeCommand('justifyLeft')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200">
+              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-github-border pl-2">
+                <button onClick={() => executeCommand('justifyLeft')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-700 dark:text-slate-200">
                   <AlignLeft className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => executeCommand('justifyCenter')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200">
+                <button onClick={() => executeCommand('justifyCenter')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-700 dark:text-slate-200">
                   <AlignCenter className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => executeCommand('justifyRight')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200">
+                <button onClick={() => executeCommand('justifyRight')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-700 dark:text-slate-200">
                   <AlignRight className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
-                <button onClick={() => executeCommand('insertUnorderedList')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200">
+              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-github-border pl-2">
+                <button onClick={() => executeCommand('insertUnorderedList')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-700 dark:text-slate-200">
                   <List className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => executeCommand('insertOrderedList')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200">
+                <button onClick={() => executeCommand('insertOrderedList')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-github-raised text-slate-700 dark:text-slate-200">
                   <ListOrdered className="w-3.5 h-3.5" />
                 </button>
               </div>
 
               {/* Paper Size Selector */}
-              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
+              <div className="flex items-center gap-1 border-l border-slate-200 dark:border-github-border pl-2">
                 <Layers className="w-3.5 h-3.5 text-slate-400" />
                 <select
                   value={paperSize}
                   onChange={(e) => setPaperSize(e.target.value)}
-                  className="text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2 py-1 text-slate-900 dark:text-white"
+                  className="text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel px-2 py-1 text-slate-900 dark:text-white"
                 >
                   <option value="A4">A4 Standard</option>
                   <option value="Letter">US Letter</option>
@@ -466,7 +466,7 @@ export function Reports() {
 
             {/* Custom Dimension Inputs */}
             {paperSize === 'Custom' && (
-              <div className="bg-slate-100 dark:bg-slate-800/80 p-2 border border-slate-200 dark:border-slate-700 flex items-center gap-3 text-xs">
+              <div className="bg-slate-100 dark:bg-github-panel/80 p-2 border border-slate-200 dark:border-github-border flex items-center gap-3 text-xs">
                 <span className="font-bold text-slate-500">Custom Dimensions:</span>
                 <input
                   type="number"
@@ -496,7 +496,7 @@ export function Reports() {
             )}
 
             {/* Document Page Canvas */}
-            <div className="bg-slate-200 dark:bg-slate-900 p-8 flex justify-center min-h-[600px] overflow-x-auto">
+            <div className="bg-slate-200 dark:bg-github-canvas p-8 flex justify-center min-h-[600px] overflow-x-auto">
               <div
                 ref={editorRef}
                 contentEditable
@@ -514,7 +514,7 @@ export function Reports() {
 
       {/* VIEW 3: LIVE PREVIEW WITH MOCK DATA */}
       {activeView === 'preview' && (
-        <div className="bg-slate-200 dark:bg-slate-900 p-8 flex justify-center min-h-[600px]">
+        <div className="bg-slate-200 dark:bg-github-canvas p-8 flex justify-center min-h-[600px]">
           <div className="bg-white text-slate-900 p-10 shadow-2xl border border-slate-300 max-w-[750px] w-full min-h-[650px]">
             <div className="mb-4 pb-2 border-b border-slate-200 text-xs text-slate-400 font-mono flex items-center justify-between">
               <span>PREVIEW MODE - Variables replaced with mock sample data</span>

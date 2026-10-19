@@ -1,41 +1,12 @@
-import React, { useState } from 'react';
-import { Anchor, Plus, Search, MapPin, Trash2, CheckCircle2, AlertTriangle, Server } from 'lucide-react';
+import { useState } from 'react';
+import { Anchor, Plus, Search, MapPin, Trash2, CheckCircle2, Server } from 'lucide-react';
+import { loadPorts, savePorts } from '../data/operationsData';
 
-export function PortsManager() {
+export function PortsManager({ canEdit = true }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Essential Port / Location Data
-  const [ports, setPorts] = useState([
-    {
-      id: 'port-1',
-      name: 'Port of Manila (South Harbor)',
-      code: 'PH MNL',
-      region: 'Luzon, Philippines',
-      status: 'Active'
-    },
-    {
-      id: 'port-2',
-      name: 'Cebu International Port',
-      code: 'PH CEB',
-      region: 'Visayas, Philippines',
-      status: 'Active'
-    },
-    {
-      id: 'port-3',
-      name: 'Batangas Port',
-      code: 'PH BTG',
-      region: 'Calabarzon, Philippines',
-      status: 'Active'
-    },
-    {
-      id: 'port-4',
-      name: 'Davao Port Terminal',
-      code: 'PH DVO',
-      region: 'Mindanao, Philippines',
-      status: 'Maintenance'
-    }
-  ]);
+  const [ports, setPorts] = useState(loadPorts);
+  const [error, setError] = useState('');
 
   // Streamlined Form State
   const [newPort, setNewPort] = useState({
@@ -45,18 +16,34 @@ export function PortsManager() {
     status: 'Active'
   });
 
+  const commitPorts = (updatedPorts) => {
+    try {
+      savePorts(updatedPorts);
+      setPorts(updatedPorts);
+      setError('');
+      return true;
+    } catch (saveError) {
+      console.error('Unable to save port records.', saveError);
+      setError('Could not save port changes. Check browser storage settings.');
+      return false;
+    }
+  };
+
   const handleAddPort = (e) => {
     e.preventDefault();
+    if (!canEdit) return;
     if (!newPort.name || !newPort.code) return alert('Please enter Port Name and Code.');
 
-    setPorts([{ ...newPort, id: `port-${Date.now()}` }, ...ports]);
-    setIsModalOpen(false);
-    setNewPort({ name: '', code: '', region: '', status: 'Active' });
+    if (commitPorts([{ ...newPort, id: `port-${Date.now()}` }, ...ports])) {
+      setIsModalOpen(false);
+      setNewPort({ name: '', code: '', region: '', status: 'Active' });
+    }
   };
 
   const removePort = (id) => {
+    if (!canEdit) return;
     if (confirm('Remove this port location?')) {
-      setPorts(ports.filter(p => p.id !== id));
+      commitPorts(ports.filter(p => p.id !== id));
     }
   };
 
@@ -69,26 +56,30 @@ export function PortsManager() {
   return (
     <div className="space-y-6">
       {/* Header Bar */}
-      <div className="bg-white dark:bg-[#0f172a] p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between gap-4">
+      <div className="bg-white dark:bg-github-panel p-6 border border-slate-200 dark:border-github-border shadow-sm flex items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Anchor className="w-6 h-6 text-blue-500" /> Ports & Terminals
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Manage origin and destination locations for fleet routes.
+          <p className="text-xs text-slate-500 dark:text-github-muted mt-1">
+            {canEdit
+              ? "Manage origin and destination locations for fleet routes."
+              : "View registered origin and destination locations for fleet routes."}
           </p>
         </div>
 
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-blue-600/20"
-        >
-          <Plus className="w-4 h-4" /> Add Port
-        </button>
+        {canEdit && (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-blue-600/20"
+          >
+            <Plus className="w-4 h-4" /> Add Port
+          </button>
+        )}
       </div>
 
       {/* Search Bar */}
-      <div className="bg-white dark:bg-[#0f172a] p-4 border border-slate-200 dark:border-slate-800 shadow-sm">
+      <div className="bg-white dark:bg-github-panel p-4 border border-slate-200 dark:border-github-border shadow-sm">
         <div className="relative w-full max-w-md">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -96,9 +87,14 @@ export function PortsManager() {
             placeholder="Search port name, code, or region..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+            className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
           />
         </div>
+        {error && (
+          <p role="alert" className="border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+            {error}
+          </p>
+        )}
       </div>
 
       {/* Minimal Locations List */}
@@ -106,7 +102,7 @@ export function PortsManager() {
         {filteredPorts.map((port) => (
           <div
             key={port.id}
-            className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-4 shadow-sm flex flex-col justify-between space-y-3"
+            className="bg-white dark:bg-github-panel border border-slate-200 dark:border-github-border p-4 shadow-sm flex flex-col justify-between space-y-3"
           >
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -116,7 +112,7 @@ export function PortsManager() {
                 <h3 className="font-bold text-sm text-slate-900 dark:text-white mt-1.5">
                   {port.name}
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-1">
+                <p className="text-xs text-slate-500 dark:text-github-muted flex items-center gap-1 mt-1">
                   <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0" /> {port.region || 'N/A'}
                 </p>
               </div>
@@ -136,24 +132,26 @@ export function PortsManager() {
             </div>
 
             {/* Actions */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 flex justify-end">
-              <button
-                onClick={() => removePort(port.id)}
-                className="text-red-500 hover:text-red-600 font-semibold flex items-center gap-1 text-[11px]"
-              >
-                <Trash2 className="w-3.5 h-3.5" /> Remove
-              </button>
-            </div>
+            {canEdit && (
+              <div className="pt-2 border-t border-slate-100 dark:border-github-border/60 flex justify-end">
+                <button
+                  onClick={() => removePort(port.id)}
+                  className="text-red-500 hover:text-red-600 font-semibold flex items-center gap-1 text-[11px]"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Remove
+                </button>
+              </div>
+            )}
           </div>
         ))}
       </div>
 
       {/* Essential Add Port Modal */}
-      {isModalOpen && (
+      {canEdit && isModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md p-5 space-y-4">
+          <div className="bg-white dark:bg-github-panel border border-slate-200 dark:border-github-border shadow-2xl w-full max-w-md p-5 space-y-4">
             
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-github-border pb-2">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Anchor className="w-4 h-4 text-blue-500" /> Add New Location
               </h3>
@@ -173,7 +171,7 @@ export function PortsManager() {
                   placeholder="e.g. Batangas Port"
                   value={newPort.name}
                   onChange={(e) => setNewPort({ ...newPort, name: e.target.value })}
-                  className="w-full px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-1.5 text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
                 />
               </div>
 
@@ -187,7 +185,7 @@ export function PortsManager() {
                   placeholder="e.g. PH BTG"
                   value={newPort.code}
                   onChange={(e) => setNewPort({ ...newPort, code: e.target.value })}
-                  className="w-full px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
+                  className="w-full px-3 py-1.5 text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white font-mono"
                 />
               </div>
 
@@ -200,7 +198,7 @@ export function PortsManager() {
                   placeholder="e.g. Luzon, Philippines"
                   value={newPort.region}
                   onChange={(e) => setNewPort({ ...newPort, region: e.target.value })}
-                  className="w-full px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-1.5 text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
                 />
               </div>
 
@@ -211,18 +209,18 @@ export function PortsManager() {
                 <select
                   value={newPort.status}
                   onChange={(e) => setNewPort({ ...newPort, status: e.target.value })}
-                  className="w-full px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-1.5 text-xs border border-slate-200 dark:border-github-border bg-slate-50 dark:bg-github-panel text-slate-900 dark:text-white"
                 >
                   <option value="Active">Active</option>
                   <option value="Maintenance">Maintenance / Inactive</option>
                 </select>
               </div>
 
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2">
+              <div className="pt-3 border-t border-slate-200 dark:border-github-border flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold"
+                  className="px-3 py-1.5 bg-slate-100 dark:bg-github-panel text-slate-700 dark:text-github-text text-xs font-bold"
                 >
                   Cancel
                 </button>
